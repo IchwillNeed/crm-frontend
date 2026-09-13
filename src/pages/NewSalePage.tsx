@@ -4,7 +4,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { Plus, Trash2, ArrowLeft } from 'lucide-react';
 import { getCustomers } from '@/api/endpoints/customers';
 import { getProducts } from '@/api/endpoints/catalog';
-import { getPaymentMethods, createSale, addSaleItem, getSale } from '@/api/endpoints/sales';
+import { getPaymentMethods, createSale, addSaleItem, } from '@/api/endpoints/sales';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
