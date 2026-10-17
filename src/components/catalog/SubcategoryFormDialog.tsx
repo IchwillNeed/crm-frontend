@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getCategories, createSubcategory, updateSubcategory } from '@/api/endpoints/catalog';
 import type { Subcategory } from '@/types/catalog';
@@ -26,18 +26,18 @@ interface Props {
   subcategory?: Subcategory | null;
 }
 
-export function SubcategoryFormDialog({ open, onOpenChange, subcategory }: Props) {
-  const [name, setName] = useState('');
-  const [categoryId, setCategoryId] = useState<number | null>(null);
+export function SubcategoryFormDialog(props: Props) {
+  return props.open ? <SubcategoryFormDialogBody key={props.subcategory?.id ?? "new"} {...props} /> : null;
+}
+
+function SubcategoryFormDialogBody({ open, onOpenChange, subcategory }: Props) {
+  const [name, setName] = useState(subcategory?.name ?? '');
+  const [categoryId, setCategoryId] = useState<number | null>(subcategory?.category ?? null);
   const queryClient = useQueryClient();
   const isEditing = !!subcategory;
 
   const { data: categories } = useQuery({ queryKey: ['categories'], queryFn: getCategories });
 
-  useEffect(() => {
-    setName(subcategory?.name ?? '');
-    setCategoryId(subcategory?.category ?? null);
-  }, [subcategory, open]);
 
   const createMutation = useMutation({
     mutationFn: createSubcategory,
@@ -61,7 +61,8 @@ export function SubcategoryFormDialog({ open, onOpenChange, subcategory }: Props
     e.preventDefault();
     if (!categoryId) return;
     const data = { category: categoryId, name };
-    isEditing ? updateMutation.mutate(data) : createMutation.mutate(data);
+    if (isEditing) updateMutation.mutate(data);
+    else createMutation.mutate(data);
   };
 
   return (

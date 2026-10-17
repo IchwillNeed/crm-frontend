@@ -1,6 +1,7 @@
+import { usePermissions } from '@/lib/permissions';
 import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, Users, Package, ShoppingCart, Receipt, Settings, LogOut, Tags } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/lib/auth-context';
 import { cn } from '@/lib/utils';
 
 const navItems = [
@@ -14,17 +15,18 @@ const navItems = [
 ];
 
 export function Sidebar() {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
+  const { can } = usePermissions();
 
   return (
-    <aside className="flex h-screen w-64 flex-col border-r bg-background">
+    <aside className="flex w-full flex-col border-b bg-background md:h-screen md:w-64 md:shrink-0 md:border-r">
       <div className="flex h-16 items-center gap-2 border-b px-6">
         <div className="h-6 w-6 rounded-full bg-primary" />
         <span className="text-lg font-bold">KANTU</span>
       </div>
 
-      <nav className="flex-1 space-y-1 p-3">
-        {navItems.map((item) => (
+      <nav className="flex flex-wrap gap-1 p-3 md:block md:flex-1 md:space-y-1">
+        {navItems.filter(item => item.to !== '/dashboard' || can('dashboard')).filter(item => item.to !== '/expenses' || can('expenses')).map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
@@ -43,7 +45,7 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="border-t p-3">
+      <div className="border-t p-3"><p className="px-3 text-xs text-muted-foreground">{user?.username} · {user?.role_name}</p>
         <button
           onClick={logout}
           className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"

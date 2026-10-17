@@ -30,15 +30,18 @@ export function CategorySelector({
   const { data: subcategories } = useQuery({ queryKey: ['subcategories'], queryFn: getSubcategories });
   const { data: productTypes } = useQuery({ queryKey: ['product-types'], queryFn: getProductTypes });
 
-  const filteredSubcategories = subcategories?.filter((s) => s.category === categoryId) ?? [];
-  const filteredProductTypes = productTypes?.filter((pt) => pt.subcategory === subcategoryId) ?? [];
+  const selectedType = productTypes?.find(type => type.id === productTypeId);
+  const selectedSubcategoryId = subcategoryId ?? selectedType?.subcategory ?? null;
+  const selectedCategoryId = categoryId ?? subcategories?.find(sub => sub.id === selectedSubcategoryId)?.category ?? null;
+  const filteredSubcategories = subcategories?.filter((s) => s.category === selectedCategoryId) ?? [];
+  const filteredProductTypes = productTypes?.filter((pt) => pt.subcategory === selectedSubcategoryId) ?? [];
 
   return (
-    <div className="grid grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
       <div className="space-y-2">
         <Label>Categoría</Label>
         <Select
-          value={categoryId?.toString() ?? ''}
+          value={selectedCategoryId?.toString() ?? ''}
           onValueChange={(val) => {
             onCategoryChange(Number(val));
             onSubcategoryChange(null);
@@ -61,12 +64,12 @@ export function CategorySelector({
       <div className="space-y-2">
         <Label>Subcategoría</Label>
         <Select
-          value={subcategoryId?.toString() ?? ''}
+          value={selectedSubcategoryId?.toString() ?? ''}
           onValueChange={(val) => {
             onSubcategoryChange(Number(val));
             onProductTypeChange(null);
           }}
-          disabled={!categoryId}
+          disabled={!selectedCategoryId}
         >
           <SelectTrigger>
             <SelectValue placeholder="Seleccionar" />
@@ -86,7 +89,7 @@ export function CategorySelector({
         <Select
           value={productTypeId?.toString() ?? ''}
           onValueChange={(val) => onProductTypeChange(Number(val))}
-          disabled={!subcategoryId}
+          disabled={!selectedSubcategoryId}
         >
           <SelectTrigger>
             <SelectValue placeholder="Seleccionar" />

@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createCustomer, updateCustomer } from '@/api/endpoints/customers';
 import type { Customer, CustomerFormData } from '@/types/customer';
@@ -30,26 +30,15 @@ const emptyForm: Partial<CustomerFormData> = {
   notes: '',
 };
 
-export function CustomerFormDialog({ open, onOpenChange, customer }: CustomerFormDialogProps) {
-  const [formData, setFormData] = useState<Partial<CustomerFormData>>(emptyForm);
+export function CustomerFormDialog(props: CustomerFormDialogProps) {
+  return props.open ? <CustomerFormDialogBody key={props.customer?.id ?? "new"} {...props} /> : null;
+}
+
+function CustomerFormDialogBody({ open, onOpenChange, customer }: CustomerFormDialogProps) {
+  const [formData, setFormData] = useState<Partial<CustomerFormData>>(customer ? { first_name: customer.first_name, last_name: customer.last_name, email: customer.email ?? '', phone: customer.phone ?? '', address: customer.address ?? '', city: customer.city ?? '', notes: customer.notes ?? '' } : emptyForm);
   const queryClient = useQueryClient();
   const isEditing = !!customer;
 
-  useEffect(() => {
-    if (customer) {
-      setFormData({
-        first_name: customer.first_name,
-        last_name: customer.last_name,
-        email: customer.email ?? '',
-        phone: customer.phone ?? '',
-        address: customer.address ?? '',
-        city: customer.city ?? '',
-        notes: customer.notes ?? '',
-      });
-    } else {
-      setFormData(emptyForm);
-    }
-  }, [customer, open]);
 
   const createMutation = useMutation({
     mutationFn: createCustomer,

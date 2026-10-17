@@ -1,5 +1,8 @@
+import { useCompanyFormatting } from '@/lib/company-formatting';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { Can } from '@/components/shared/Can';
+import { updateSaleStatus } from '@/api/endpoints/sales';
 import { ArrowLeft } from 'lucide-react';
 import { getSale, getPaymentMethods } from '@/api/endpoints/sales';
 import { getCustomers } from '@/api/endpoints/customers';
@@ -12,18 +15,14 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 
-function formatCurrency(value: string) {
-  return new Intl.NumberFormat('es-BO', { style: 'currency', currency: 'BOB' }).format(Number(value));
-}
 
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat('es-BO', { dateStyle: 'long', timeStyle: 'short' }).format(new Date(value));
-}
 
 export function SaleDetailPage() {
+  const { formatCurrency, formatDate } = useCompanyFormatting();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const saleId = Number(id);
+  const statusMutation = useMutation({ mutationFn: (status: 'Completed' | 'Cancelled') => updateSaleStatus(saleId, status) });
 
   const { data: sale, isLoading } = useQuery({
     queryKey: ['sale', saleId],
@@ -81,6 +80,13 @@ export function SaleDetailPage() {
         </Badge>
       </div>
 
+      <div className="flex flex-wrap gap-3 print:hidden">
+        <Button variant="outline" onClick={() => window.print()}>Imprimir comprobante</Button>
+        <Can permission="sales.update"><Button variant="outline" disabled={statusMutation.isPending} onClick={() => {
+          const cancelling = sale.status === 'Completed';
+          if (window.confirm(cancelling ? '¿Cancelar esta venta? Se devolverán las unidades al inventario.' : '¿Reactivar esta venta? Se descontarán las unidades del inventario.')) statusMutation.mutate(cancelling ? 'Cancelled' : 'Completed');
+        }}>{sale.status === 'Completed' ? 'Cancelar venta' : 'Reactivar venta'}</Button></Can>
+      </div>
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader>

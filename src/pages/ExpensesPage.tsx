@@ -1,8 +1,11 @@
+import { usePagedList } from '@/lib/use-paged-list';
+import { exportCsv } from '@/lib/export-csv';
+import { useCompanyFormatting } from '@/lib/company-formatting';
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Pencil, Trash2, } from 'lucide-react';
 import {
-  getExpenses, deleteExpense,
+  deleteExpense,
   getExpenseCategories, deleteExpenseCategory,
 } from '@/api/endpoints/expenses';
 import type { Expense, ExpenseCategory } from '@/types/expense';
@@ -19,13 +22,7 @@ import {
 import { ExpenseFormDialog } from '@/components/expenses/ExpenseFormDialog';
 import { ExpenseCategoryFormDialog } from '@/components/expenses/ExpenseCategoryFormDialog';
 
-function formatCurrency(value: string) {
-  return new Intl.NumberFormat('es-BO', { style: 'currency', currency: 'BOB' }).format(Number(value));
-}
 
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat('es-BO', { dateStyle: 'medium' }).format(new Date(value));
-}
 
 export function ExpensesPage() {
   return (
@@ -53,12 +50,13 @@ export function ExpensesPage() {
 }
 
 function ExpensesTab() {
+  const { formatCurrency, formatDate } = useCompanyFormatting();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Expense | null>(null);
   const [deleting, setDeleting] = useState<Expense | null>(null);
   const queryClient = useQueryClient();
 
-  const { data: expenses, isLoading } = useQuery({ queryKey: ['expenses'], queryFn: getExpenses });
+  const { data: expenses, isLoading, controls } = usePagedList<Expense>('expenses', '/expenses/');
   const { data: categories } = useQuery({ queryKey: ['expense-categories'], queryFn: getExpenseCategories });
 
   const deleteMutation = useMutation({
@@ -79,6 +77,8 @@ function ExpensesTab() {
         </Button>
       </div>
       <div className="rounded-md border bg-background">
+        <Button className="m-3" variant="outline" disabled={!expenses?.length} onClick={() => exportCsv("expenses.csv", ['ID', 'Fecha', 'Descripción', 'Importe'], expenses?.map(r => [r.id, r.expense_date, r.description, r.amount]) ?? [])}>Exportar página CSV</Button>
+        {controls}
         <Table>
           <TableHeader>
             <TableRow>

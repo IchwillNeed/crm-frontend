@@ -1,7 +1,9 @@
+import { usePagedList } from '@/lib/use-paged-list';
+import { Can } from '@/components/shared/Can';
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Pencil, Trash2, Eye } from 'lucide-react';
-import { getCustomers, deleteCustomer } from '@/api/endpoints/customers';
+import { deleteCustomer } from '@/api/endpoints/customers';
 import type { Customer } from '@/types/customer';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -35,10 +37,7 @@ export function CustomersPage() {
 
   const navigate = useNavigate();
 
-  const { data: customers, isLoading } = useQuery({
-    queryKey: ['customers'],
-    queryFn: getCustomers,
-  });
+  const { data: customers, isLoading, controls } = usePagedList<Customer>('customers', '/customers/');
 
   const deleteMutation = useMutation({
     mutationFn: deleteCustomer,
@@ -65,13 +64,14 @@ export function CustomersPage() {
           <h1 className="text-2xl font-bold">Clientes</h1>
           <p className="text-muted-foreground">Gestiona los clientes de tu negocio</p>
         </div>
-        <Button onClick={handleCreate}>
+        <Can permission="customers.write"><Button onClick={handleCreate}>
           <Plus className="mr-2 h-4 w-4" />
           Nuevo cliente
-        </Button>
+        </Button></Can>
       </div>
 
       <div className="rounded-md border bg-background">
+        {controls}
         <Table>
           <TableHeader>
             <TableRow>
@@ -107,15 +107,15 @@ export function CustomersPage() {
                   <TableCell>{customer.phone || '—'}</TableCell>
                   <TableCell>{customer.city || '—'}</TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => navigate(`/customers/${customer.id}`)}>
+                    <Button aria-label="Ver detalle" variant="ghost" size="icon" onClick={() => navigate(`/customers/${customer.id}`)}>
                       <Eye className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleEdit(customer)}>
+                    <Can permission="customers.write"><Button aria-label="Editar" variant="ghost" size="icon" onClick={() => handleEdit(customer)}>
                       <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => setDeletingCustomer(customer)}>
+                    </Button></Can>
+                    <Can permission="delete"><Button aria-label="Eliminar" variant="ghost" size="icon" onClick={() => setDeletingCustomer(customer)}>
                       <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                    </Button></Can>
                   </TableCell>
                 </TableRow>
               ))

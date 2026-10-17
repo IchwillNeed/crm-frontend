@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createExpenseCategory, updateExpenseCategory } from '@/api/endpoints/expenses';
 import type { ExpenseCategory } from '@/types/expense';
@@ -15,16 +15,17 @@ interface Props {
   category?: ExpenseCategory | null;
 }
 
-export function ExpenseCategoryFormDialog({ open, onOpenChange, category }: Props) {
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
+export function ExpenseCategoryFormDialog(props: Props) {
+  return props.open ? <ExpenseCategoryFormDialogBody key={props.category?.id ?? "new"} {...props} /> : null;
+}
+
+function ExpenseCategoryFormDialogBody({ open, onOpenChange, category }: Props) {
+  const [name, setName] = useState(category?.name ?? '');
+  const [description, setDescription] = useState(category?.description ?? '');
   const queryClient = useQueryClient();
   const isEditing = !!category;
+  const [isActive, setIsActive] = useState(category?.is_active ?? true);
 
-  useEffect(() => {
-    setName(category?.name ?? '');
-    setDescription(category?.description ?? '');
-  }, [category, open]);
 
   const createMutation = useMutation({
     mutationFn: createExpenseCategory,
@@ -46,8 +47,9 @@ export function ExpenseCategoryFormDialog({ open, onOpenChange, category }: Prop
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    const data = { name, description };
-    isEditing ? updateMutation.mutate(data) : createMutation.mutate(data);
+    const data = { name, description, is_active: isActive };
+    if (isEditing) updateMutation.mutate(data);
+    else createMutation.mutate(data);
   };
 
   return (
@@ -65,6 +67,7 @@ export function ExpenseCategoryFormDialog({ open, onOpenChange, category }: Prop
             <Label htmlFor="description">Descripción</Label>
             <Input id="description" value={description} onChange={(e) => setDescription(e.target.value)} />
           </div>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={isActive} onChange={e => setIsActive(e.target.checked)} />Categoría activa</label>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar

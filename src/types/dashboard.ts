@@ -7,6 +7,7 @@ export interface ComparisonMetric {
 }
 
 export interface DashboardOverview {
+  comparison_period: { start: string; end: string };
   period: {
     start: string;
     end: string;

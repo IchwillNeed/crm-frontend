@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createCategory, updateCategory } from '@/api/endpoints/catalog';
 import type { Category } from '@/types/catalog';
@@ -19,16 +19,16 @@ interface Props {
   category?: Category | null;
 }
 
-export function CategoryFormDialog({ open, onOpenChange, category }: Props) {
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
+export function CategoryFormDialog(props: Props) {
+  return props.open ? <CategoryFormDialogBody key={props.category?.id ?? "new"} {...props} /> : null;
+}
+
+function CategoryFormDialogBody({ open, onOpenChange, category }: Props) {
+  const [name, setName] = useState(category?.name ?? '');
+  const [description, setDescription] = useState(category?.description ?? '');
   const queryClient = useQueryClient();
   const isEditing = !!category;
 
-  useEffect(() => {
-    setName(category?.name ?? '');
-    setDescription(category?.description ?? '');
-  }, [category, open]);
 
   const createMutation = useMutation({
     mutationFn: createCategory,
@@ -51,7 +51,8 @@ export function CategoryFormDialog({ open, onOpenChange, category }: Props) {
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     const data = { name, description };
-    isEditing ? updateMutation.mutate(data) : createMutation.mutate(data);
+    if (isEditing) updateMutation.mutate(data);
+    else createMutation.mutate(data);
   };
 
   return (

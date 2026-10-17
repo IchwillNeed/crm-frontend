@@ -81,3 +81,8 @@ export const updateProductType = async (id: number, data: { subcategory: number;
 export const deleteProductType = async (id: number): Promise<void> => {
   await apiClient.delete(`/product-types/${id}/`);
 };
+
+export const getRoles = async (): Promise<{ id: number; name: string }[]> => {
+  const response = await apiClient.get('/roles/');
+  return response.data;
+};

@@ -1,7 +1,11 @@
+import { usePagedList } from '@/lib/use-paged-list';
+import { exportCsv } from '@/lib/export-csv';
+import { useCompanyFormatting } from '@/lib/company-formatting';
+import { Can } from '@/components/shared/Can';
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Pencil, Trash2, PackagePlus } from 'lucide-react';
-import { getProducts, deleteProduct } from '@/api/endpoints/catalog';
+import { deleteProduct } from '@/api/endpoints/catalog';
 import type { Product } from '@/types/catalog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,14 +31,11 @@ import {
 import { ProductFormDialog } from '@/components/products/ProductFormDialog';
 import { RestockDialog } from '@/components/products/RestockDialog';
 
-function formatCurrency(value: string | null) {
-  if (value === null) return '—';
-  return new Intl.NumberFormat('es-BO', { style: 'currency', currency: 'BOB' }).format(Number(value));
-}
 
 const LOW_STOCK_THRESHOLD = 5;
 
 export function ProductsPage() {
+  const { formatCurrency } = useCompanyFormatting();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
@@ -42,10 +43,7 @@ export function ProductsPage() {
 
   const queryClient = useQueryClient();
 
-  const { data: products, isLoading } = useQuery({
-    queryKey: ['products'],
-    queryFn: getProducts,
-  });
+  const { data: products, isLoading, controls } = usePagedList<Product>('products', '/products/');
 
   const deleteMutation = useMutation({
     mutationFn: deleteProduct,
@@ -62,7 +60,7 @@ export function ProductsPage() {
           <h1 className="text-2xl font-bold">Productos</h1>
           <p className="text-muted-foreground">Gestiona tu catálogo de productos</p>
         </div>
-        <Button
+        <Can permission="catalog.write"><Button
           onClick={() => {
             setEditingProduct(null);
             setDialogOpen(true);
@@ -70,10 +68,12 @@ export function ProductsPage() {
         >
           <Plus className="mr-2 h-4 w-4" />
           Nuevo producto
-        </Button>
+        </Button></Can>
       </div>
 
       <div className="rounded-md border bg-background">
+        <Button className="m-3" variant="outline" disabled={!products?.length} onClick={() => exportCsv("products.csv", ['ID', 'Producto', 'Precio', 'Costo', 'Stock'], products?.map(r => [r.id, r.name, r.price, r.cost, r.stock]) ?? [])}>Exportar página CSV</Button>
+        {controls}
         <Table>
           <TableHeader>
             <TableRow>
@@ -114,15 +114,15 @@ export function ProductsPage() {
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
+                    <Can permission="catalog.write"><Button aria-label="Reabastecer"
                       variant="ghost"
                       size="icon"
                       title="Reabastecer"
                       onClick={() => setRestockingProduct(product)}
                     >
                       <PackagePlus className="h-4 w-4" />
-                    </Button>
-                    <Button
+                    </Button></Can>
+                    <Can permission="catalog.write"><Button aria-label="Editar"
                       variant="ghost"
                       size="icon"
                       onClick={() => {
@@ -131,10 +131,10 @@ export function ProductsPage() {
                       }}
                     >
                       <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => setDeletingProduct(product)}>
+                    </Button></Can>
+                    <Can permission="delete"><Button aria-label="Eliminar" variant="ghost" size="icon" onClick={() => setDeletingProduct(product)}>
                       <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                    </Button></Can>
                   </TableCell>
                 </TableRow>
               ))

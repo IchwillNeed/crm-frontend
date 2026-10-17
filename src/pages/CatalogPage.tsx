@@ -1,3 +1,4 @@
+import { Can } from '@/components/shared/Can';
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
@@ -69,9 +70,9 @@ function CategoriesTab() {
   return (
     <div className="space-y-4 pt-4">
       <div className="flex justify-end">
-        <Button onClick={() => { setEditing(null); setDialogOpen(true); }}>
+        <Can permission="catalog.write"><Button onClick={() => { setEditing(null); setDialogOpen(true); }}>
           <Plus className="mr-2 h-4 w-4" /> Nueva categoría
-        </Button>
+        </Button></Can>
       </div>
       <div className="rounded-md border bg-background">
         <Table>
@@ -88,12 +89,12 @@ function CategoriesTab() {
                 <TableCell className="font-medium">{cat.name}</TableCell>
                 <TableCell>{cat.description || '—'}</TableCell>
                 <TableCell className="text-right">
-                  <Button variant="ghost" size="icon" onClick={() => { setEditing(cat); setDialogOpen(true); }}>
+                  <Can permission="catalog.write"><Button aria-label="Editar" variant="ghost" size="icon" onClick={() => { setEditing(cat); setDialogOpen(true); }}>
                     <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => setDeleting(cat)}>
+                  </Button></Can>
+                  <Can permission="delete"><Button aria-label="Eliminar" variant="ghost" size="icon" onClick={() => setDeleting(cat)}>
                     <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
+                  </Button></Can>
                 </TableCell>
               </TableRow>
             ))}
@@ -145,9 +146,9 @@ function SubcategoriesTab() {
   return (
     <div className="space-y-4 pt-4">
       <div className="flex justify-end">
-        <Button onClick={() => { setEditing(null); setDialogOpen(true); }}>
+        <Can permission="catalog.write"><Button onClick={() => { setEditing(null); setDialogOpen(true); }}>
           <Plus className="mr-2 h-4 w-4" /> Nueva subcategoría
-        </Button>
+        </Button></Can>
       </div>
       <div className="rounded-md border bg-background">
         <Table>
@@ -164,12 +165,12 @@ function SubcategoriesTab() {
                 <TableCell className="font-medium">{sub.name}</TableCell>
                 <TableCell>{categoryName(sub.category)}</TableCell>
                 <TableCell className="text-right">
-                  <Button variant="ghost" size="icon" onClick={() => { setEditing(sub); setDialogOpen(true); }}>
+                  <Can permission="catalog.write"><Button aria-label="Editar" variant="ghost" size="icon" onClick={() => { setEditing(sub); setDialogOpen(true); }}>
                     <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => setDeleting(sub)}>
+                  </Button></Can>
+                  <Can permission="delete"><Button aria-label="Eliminar" variant="ghost" size="icon" onClick={() => setDeleting(sub)}>
                     <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
+                  </Button></Can>
                 </TableCell>
               </TableRow>
             ))}
@@ -221,9 +222,9 @@ function ProductTypesTab() {
   return (
     <div className="space-y-4 pt-4">
       <div className="flex justify-end">
-        <Button onClick={() => { setEditing(null); setDialogOpen(true); }}>
+        <Can permission="catalog.write"><Button onClick={() => { setEditing(null); setDialogOpen(true); }}>
           <Plus className="mr-2 h-4 w-4" /> Nuevo tipo de producto
-        </Button>
+        </Button></Can>
       </div>
       <div className="rounded-md border bg-background">
         <Table>
@@ -240,12 +241,12 @@ function ProductTypesTab() {
                 <TableCell className="font-medium">{pt.name}</TableCell>
                 <TableCell>{subcategoryName(pt.subcategory)}</TableCell>
                 <TableCell className="text-right">
-                  <Button variant="ghost" size="icon" onClick={() => { setEditing(pt); setDialogOpen(true); }}>
+                  <Can permission="catalog.write"><Button aria-label="Editar" variant="ghost" size="icon" onClick={() => { setEditing(pt); setDialogOpen(true); }}>
                     <Pencil className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => setDeleting(pt)}>
+                  </Button></Can>
+                  <Can permission="delete"><Button aria-label="Eliminar" variant="ghost" size="icon" onClick={() => setDeleting(pt)}>
                     <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
+                  </Button></Can>
                 </TableCell>
               </TableRow>
             ))}

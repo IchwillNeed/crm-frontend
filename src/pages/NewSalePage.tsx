@@ -1,10 +1,12 @@
+import { errorMessage } from '@/lib/errors';
+import { useCompanyFormatting } from '@/lib/company-formatting';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Plus, Trash2, ArrowLeft } from 'lucide-react';
 import { getCustomers } from '@/api/endpoints/customers';
 import { getProducts } from '@/api/endpoints/catalog';
-import { getPaymentMethods, createSale, addSaleItem, } from '@/api/endpoints/sales';
+import { getPaymentMethods, createSale, } from '@/api/endpoints/sales';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -26,11 +28,9 @@ interface CartLine {
   unitPrice: number;
 }
 
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat('es-BO', { style: 'currency', currency: 'BOB' }).format(value);
-}
 
 export function NewSalePage() {
+  const { formatCurrency } = useCompanyFormatting();
   const navigate = useNavigate();
 
   const [customerId, setCustomerId] = useState<string>('');
@@ -50,12 +50,12 @@ export function NewSalePage() {
 
   const total = cart.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
   
-  const productOptions: SearchableSelectOption[] = (products ?? []).map((p) => ({
+  const productOptions: SearchableSelectOption[] = (products ?? []).filter(p => p.is_active && p.stock > 0).map((p) => ({
     value: p.id.toString(),
     label: `${p.name} — ${formatCurrency(Number(p.price))} (stock: ${p.stock})`,
   }));
 
-  const customerOptions: SearchableSelectOption[] = (customers ?? []).map((c) => ({
+  const customerOptions: SearchableSelectOption[] = (customers ?? []).filter(c => c.is_active).map((c) => ({
     value: c.id.toString(),
     label: `${c.first_name} ${c.last_name}`,
   }));
@@ -67,7 +67,10 @@ export function NewSalePage() {
     if (!product) return;
 
     const qty = Number(quantity);
-    if (qty <= 0) return;
+    if (!Number.isInteger(qty) || qty <= 0) { setError('La cantidad debe ser un entero mayor a cero.'); return; }
+    const inCart = cart.find(line => line.productId === product.id)?.quantity ?? 0;
+    if (inCart + qty > product.stock) { setError('La cantidad supera el stock disponible.'); return; }
+    setError('');
 
     setCart((prev) => {
       const existing = prev.find((line) => line.productId === product.id);
@@ -109,24 +112,15 @@ export function NewSalePage() {
     setIsSubmitting(true);
     try {
       const sale = await saleMutation.mutateAsync({
+        items: cart.map(line => ({ product: line.productId, quantity: line.quantity, unit_price: line.unitPrice })),
         customer: customerId ? Number(customerId) : null,
         payment_method: paymentMethodId ? Number(paymentMethodId) : null,
         notes,
       });
 
-      // Agregamos cada item secuencialmente
-      for (const line of cart) {
-        await addSaleItem({
-          sale: sale.id,
-          product: line.productId,
-          quantity: line.quantity,
-          unit_price: line.unitPrice,
-        });
-      }
-
-      navigate('/sales');
-    } catch (err) {
-      setError('Ocurrió un error al registrar la venta. Intenta de nuevo.');
+      navigate(`/sales/${sale.id}`);
+    } catch (failure) {
+      setError(errorMessage(failure));
     } finally {
       setIsSubmitting(false);
     }
@@ -162,15 +156,16 @@ export function NewSalePage() {
                 />
               </div>
               <div className="w-24 space-y-2">
-                <Label>Cantidad</Label>
+                <Label htmlFor="quantity">Cantidad</Label>
                 <Input
+                  id="quantity"
                   type="number"
                   min="1"
                   value={quantity}
                   onChange={(e) => setQuantity(e.target.value)}
                 />
               </div>
-              <Button type="button" onClick={handleAddToCart}>
+              <Button aria-label="Agregar producto" type="button" onClick={handleAddToCart}>
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
@@ -239,7 +234,7 @@ export function NewSalePage() {
                   <SelectValue placeholder="Sin especificar" />
                 </SelectTrigger>
                 <SelectContent>
-                  {paymentMethods?.map((pm) => (
+                  {paymentMethods?.filter(pm => pm.is_active).map((pm) => (
                     <SelectItem key={pm.id} value={pm.id.toString()}>
                       {pm.name}
                     </SelectItem>

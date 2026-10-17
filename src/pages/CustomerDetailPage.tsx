@@ -1,10 +1,12 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useCompanyFormatting } from '@/lib/company-formatting';
+import { Can } from '@/components/shared/Can';
+import { useState, type FormEvent } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { ArrowLeft } from 'lucide-react';
 import { getCustomer, updateCustomer } from '@/api/endpoints/customers';
-import { getSales } from '@/api/endpoints/sales';
+import { getCustomerSales } from '@/api/endpoints/sales';
 import type { CustomerFormData } from '@/types/customer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,13 +19,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
 
-function formatCurrency(value: string) {
-  return new Intl.NumberFormat('es-BO', { style: 'currency', currency: 'BOB' }).format(Number(value));
-}
 
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat('es-BO', { dateStyle: 'medium' }).format(new Date(value));
-}
 
 function InfoRow({ label, value, full }: { label: string; value?: string | null; full?: boolean }) {
   return (
@@ -35,6 +31,7 @@ function InfoRow({ label, value, full }: { label: string; value?: string | null;
 }
 
 export function CustomerDetailPage() {
+  const { formatCurrency, formatDate } = useCompanyFormatting();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const customerId = Number(id);
@@ -50,26 +47,14 @@ export function CustomerDetailPage() {
   });
 
   const { data: allSales, isLoading: loadingSales } = useQuery({
-    queryKey: ['sales'],
-    queryFn: getSales,
+    queryKey: ['sales', 'customer', customerId],
+    queryFn: () => getCustomerSales(customerId),
   });
 
   const customerSales = allSales?.filter((s) => s.customer === customerId) ?? [];
-  const totalSpent = customerSales.reduce((sum, s) => sum + Number(s.total), 0);
+  const totalSpent = customerSales.filter(s => s.status === 'Completed').reduce((sum, s) => sum + Number(s.total), 0);
 
-  useEffect(() => {
-    if (customer) {
-      setFormData({
-        first_name: customer.first_name,
-        last_name: customer.last_name,
-        email: customer.email ?? '',
-        phone: customer.phone ?? '',
-        address: customer.address ?? '',
-        city: customer.city ?? '',
-        notes: customer.notes ?? '',
-      });
-    }
-  }, [customer]);
+
 
   const mutation = useMutation({
     mutationFn: (data: Partial<CustomerFormData>) => updateCustomer(customerId, data),
@@ -121,7 +106,7 @@ export function CustomerDetailPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/customers')}>
+        <Button aria-label="Ver detalle" variant="ghost" size="icon" onClick={() => navigate('/customers')}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
@@ -138,9 +123,21 @@ export function CustomerDetailPage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Información</CardTitle>
-                <Button variant="outline" onClick={() => setIsEditing(true)}>
+                <Can permission="customers.write"><Button variant="outline" onClick={() => {
+    if (customer) {
+      setFormData({
+        first_name: customer.first_name,
+        last_name: customer.last_name,
+        email: customer.email ?? '',
+        phone: customer.phone ?? '',
+        address: customer.address ?? '',
+        city: customer.city ?? '',
+        notes: customer.notes ?? '',
+      });
+    }
+setIsEditing(true); }}>
                   Editar
-                </Button>
+                </Button></Can>
               </CardHeader>
               <CardContent className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
                 <InfoRow label="Nombre" value={customer.first_name} />
@@ -292,7 +289,7 @@ export function CustomerDetailPage() {
           <CardContent className="space-y-4 text-sm">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Total de compras</span>
-              <span className="font-medium">{customerSales.length}</span>
+              <span className="font-medium">{customerSales.filter(s => s.status === 'Completed').length}</span>
             </div>
             <div className="border-t pt-4">
               <div className="flex justify-between text-lg font-bold">

@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getSubcategories, createProductType, updateProductType } from '@/api/endpoints/catalog';
 import type { ProductType } from '@/types/catalog';
@@ -26,18 +26,18 @@ interface Props {
   productType?: ProductType | null;
 }
 
-export function ProductTypeFormDialog({ open, onOpenChange, productType }: Props) {
-  const [name, setName] = useState('');
-  const [subcategoryId, setSubcategoryId] = useState<number | null>(null);
+export function ProductTypeFormDialog(props: Props) {
+  return props.open ? <ProductTypeFormDialogBody key={props.productType?.id ?? "new"} {...props} /> : null;
+}
+
+function ProductTypeFormDialogBody({ open, onOpenChange, productType }: Props) {
+  const [name, setName] = useState(productType?.name ?? '');
+  const [subcategoryId, setSubcategoryId] = useState<number | null>(productType?.subcategory ?? null);
   const queryClient = useQueryClient();
   const isEditing = !!productType;
 
   const { data: subcategories } = useQuery({ queryKey: ['subcategories'], queryFn: getSubcategories });
 
-  useEffect(() => {
-    setName(productType?.name ?? '');
-    setSubcategoryId(productType?.subcategory ?? null);
-  }, [productType, open]);
 
   const createMutation = useMutation({
     mutationFn: createProductType,
@@ -61,7 +61,8 @@ export function ProductTypeFormDialog({ open, onOpenChange, productType }: Props
     e.preventDefault();
     if (!subcategoryId) return;
     const data = { subcategory: subcategoryId, name };
-    isEditing ? updateMutation.mutate(data) : createMutation.mutate(data);
+    if (isEditing) updateMutation.mutate(data);
+    else createMutation.mutate(data);
   };
 
   return (

@@ -12,21 +12,13 @@ export const getSale = async (id: number): Promise<Sale> => {
 };
 
 export const createSale = async (data: {
+  items: { product: number; quantity: number; unit_price?: number }[];
   customer?: number | null;
   payment_method?: number | null;
   notes?: string;
 }): Promise<Sale> => {
   const response = await apiClient.post<Sale>('/sales/', data);
   return response.data;
-};
-
-export const addSaleItem = async (data: {
-  sale: number;
-  product: number;
-  quantity: number;
-  unit_price: number;
-}): Promise<void> => {
-  await apiClient.post('/sale-items/', data);
 };
 
 export const deleteSale = async (id: number): Promise<void> => {
@@ -37,3 +29,5 @@ export const getPaymentMethods = async (): Promise<PaymentMethod[]> => {
   const response = await apiClient.get<PaymentMethod[]>('/payment-methods/');
   return response.data;
 };
+export const getCustomerSales = async (id: number): Promise<Sale[]> => (await apiClient.get<Sale[]>('/sales/', { params: { customer: id } })).data;
+export const updateSaleStatus = async (id: number, status: 'Completed' | 'Cancelled'): Promise<Sale> => (await apiClient.patch<Sale>(`/sales/${id}/`, { status })).data;

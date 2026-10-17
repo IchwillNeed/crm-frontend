@@ -1,35 +1,53 @@
+import { lazy, Suspense } from 'react';
+const PasswordResetPage = lazy(() => import('@/pages/PasswordResetPage').then(module => ({ default: module.PasswordResetPage })));
+import { usePermissions, type Permission } from '@/lib/permissions';
+import { Button } from '@/components/ui/button';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AuthProvider, useAuth } from '@/contexts/AuthContext';
-import { LoginPage } from '@/pages/LoginPage';
-import { DashboardPage } from '@/pages/DashboardPage';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { AuthProvider } from '@/contexts/AuthContext';
+import { useAuth } from '@/lib/auth-context';
+const LoginPage = lazy(() => import('@/pages/LoginPage').then(module => ({ default: module.LoginPage })));
+const DashboardPage = lazy(() => import('@/pages/DashboardPage').then(module => ({ default: module.DashboardPage })));
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { CustomersPage } from '@/pages/CustomersPage';
-import { ProductsPage } from '@/pages/ProductsPage';
-import { CatalogPage } from '@/pages/CatalogPage';
-import { SalesPage } from '@/pages/SalesPage';
-import { NewSalePage } from '@/pages/NewSalePage';
-import { ExpensesPage } from '@/pages/ExpensesPage';
-import { SaleDetailPage } from '@/pages/SaleDetailPage';
-import { SettingsPage } from '@/pages/SettingsPage';
+const CustomersPage = lazy(() => import('@/pages/CustomersPage').then(module => ({ default: module.CustomersPage })));
+const ProductsPage = lazy(() => import('@/pages/ProductsPage').then(module => ({ default: module.ProductsPage })));
+const CatalogPage = lazy(() => import('@/pages/CatalogPage').then(module => ({ default: module.CatalogPage })));
+const SalesPage = lazy(() => import('@/pages/SalesPage').then(module => ({ default: module.SalesPage })));
+const NewSalePage = lazy(() => import('@/pages/NewSalePage').then(module => ({ default: module.NewSalePage })));
+const ExpensesPage = lazy(() => import('@/pages/ExpensesPage').then(module => ({ default: module.ExpensesPage })));
+const SaleDetailPage = lazy(() => import('@/pages/SaleDetailPage').then(module => ({ default: module.SaleDetailPage })));
+const SettingsPage = lazy(() => import('@/pages/SettingsPage').then(module => ({ default: module.SettingsPage })));
 import { Toaster } from '@/components/ui/sonner';
-import { CustomerDetailPage } from '@/pages/CustomerDetailPage';
+const CustomerDetailPage = lazy(() => import('@/pages/CustomerDetailPage').then(module => ({ default: module.CustomerDetailPage })));
+const SignupPage = lazy(() => import('@/pages/SignupPage').then(module => ({ default: module.SignupPage })));
 
-const queryClient = new QueryClient();
+import { queryClient } from '@/lib/query-client';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, error, logout } = useAuth();
 
   if (isLoading) return <div>Cargando...</div>;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
 
+  if (error) return <div className="p-6 space-y-4"><p role="alert">No se pudo cargar tu cuenta. Revisa tu conexión o vuelve a iniciar sesión.</p><Button onClick={logout}>Volver a iniciar sesión</Button></div>;
   return <>{children}</>;
 }
 
+function RoleRoute({ permission, children }: { permission: Permission; children: React.ReactNode }) {
+  const { can, home } = usePermissions();
+  return can(permission) ? children : <Navigate to={home} replace />;
+}
+function HomeRedirect() {
+  const { home } = usePermissions();
+  return <Navigate to={home} replace />;
+}
 function AppRoutes() {
   return (
     <Routes>
+      <Route path="/forgot-password" element={<PasswordResetPage />} />
+      <Route path="/reset-password/:uid/:token" element={<PasswordResetPage />} />
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/signup" element={<SignupPage />} />
       <Route
         element={
           <ProtectedRoute>
@@ -37,18 +55,18 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       >
-        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/dashboard" element={<RoleRoute permission="dashboard"><DashboardPage /></RoleRoute>} />
         <Route path="/customers" element={<CustomersPage />} />
         <Route path="/products" element={<ProductsPage />} />
         <Route path="/catalog" element={<CatalogPage />} />
         <Route path="/sales" element={<SalesPage />} />
-        <Route path="/sales/new" element={<NewSalePage />} />
-        <Route path="/expenses" element={<ExpensesPage />} />
+        <Route path="/sales/new" element={<RoleRoute permission="sales.create"><NewSalePage /></RoleRoute>} />
+        <Route path="/expenses" element={<RoleRoute permission="expenses"><ExpensesPage /></RoleRoute>} />
         <Route path="/sales/:id" element={<SaleDetailPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/customers/:id" element={<CustomerDetailPage />} />
       </Route>
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="*" element={<HomeRedirect />} />
     </Routes>
   );
 }
@@ -58,7 +76,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <BrowserRouter>
-          <AppRoutes />
+          <Suspense fallback={<p className="p-6" role="status">Cargando…</p>}><AppRoutes /></Suspense>
         </BrowserRouter>
       </AuthProvider>
       <Toaster />

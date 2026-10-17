@@ -1,8 +1,12 @@
+import { usePagedList } from '@/lib/use-paged-list';
+import { exportCsv } from '@/lib/export-csv';
+import { useCompanyFormatting } from '@/lib/company-formatting';
+import { Can } from '@/components/shared/Can';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Trash2, Eye } from 'lucide-react';
-import { getSales, deleteSale } from '@/api/endpoints/sales';
+import { deleteSale } from '@/api/endpoints/sales';
 import { getCustomers } from '@/api/endpoints/customers';
 import type { Sale } from '@/types/sale';
 import { Button } from '@/components/ui/button';
@@ -16,20 +20,15 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-function formatCurrency(value: string) {
-  return new Intl.NumberFormat('es-BO', { style: 'currency', currency: 'BOB' }).format(Number(value));
-}
 
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat('es-BO', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value));
-}
 
 export function SalesPage() {
+  const { formatCurrency, formatDate } = useCompanyFormatting();
   const navigate = useNavigate();
   const [deletingSale, setDeletingSale] = useState<Sale | null>(null);
   const queryClient = useQueryClient();
 
-  const { data: sales, isLoading } = useQuery({ queryKey: ['sales'], queryFn: getSales });
+  const { data: sales, isLoading, controls } = usePagedList<Sale>('sales', '/sales/');
   const { data: customers } = useQuery({ queryKey: ['customers'], queryFn: getCustomers });
 
   const deleteMutation = useMutation({
@@ -53,13 +52,15 @@ export function SalesPage() {
           <h1 className="text-2xl font-bold">Ventas</h1>
           <p className="text-muted-foreground">Historial de ventas registradas</p>
         </div>
-        <Button onClick={() => navigate('/sales/new')}>
+        <Can permission="sales.create"><Button onClick={() => navigate('/sales/new')}>
           <Plus className="mr-2 h-4 w-4" />
           Nueva venta
-        </Button>
+        </Button></Can>
       </div>
 
       <div className="rounded-md border bg-background">
+        <Button className="m-3" variant="outline" disabled={!sales?.length} onClick={() => exportCsv("sales.csv", ['ID', 'Fecha', 'Total', 'Estado'], sales?.map(r => [r.id, r.sale_date, r.total, r.status]) ?? [])}>Exportar página CSV</Button>
+        {controls}
         <Table>
           <TableHeader>
             <TableRow>
@@ -95,12 +96,12 @@ export function SalesPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" onClick={() => navigate(`/sales/${sale.id}`)}>
+                      <Button aria-label="Ver detalle" variant="ghost" size="icon" onClick={() => navigate(`/sales/${sale.id}`)}>
                         <Eye className="h-4 w-4" />
                       </Button>
-                    <Button variant="ghost" size="icon" onClick={() => setDeletingSale(sale)}>
+                    <Can permission="delete"><Button aria-label="Eliminar" variant="ghost" size="icon" onClick={() => setDeletingSale(sale)}>
                       <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                    </Button></Can>
                   </TableCell>
                 </TableRow>
               ))

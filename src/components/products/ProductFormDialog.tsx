@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createProduct, updateProduct } from '@/api/endpoints/catalog';
 import type { Product } from '@/types/catalog';
@@ -21,41 +21,24 @@ interface ProductFormDialogProps {
   product?: Product | null;
 }
 
-export function ProductFormDialog({ open, onOpenChange, product }: ProductFormDialogProps) {
+export function ProductFormDialog(props: ProductFormDialogProps) {
+  return props.open ? <ProductFormDialogBody key={props.product?.id ?? "new"} {...props} /> : null;
+}
+
+function ProductFormDialogBody({ open, onOpenChange, product }: ProductFormDialogProps) {
   const isEditing = !!product;
+  const [isActive, setIsActive] = useState(product?.is_active ?? true);
   const queryClient = useQueryClient();
 
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [price, setPrice] = useState('');
-  const [cost, setCost] = useState('');
-  const [stock, setStock] = useState('0');
+  const [name, setName] = useState(product?.name ?? '');
+  const [description, setDescription] = useState(product?.description ?? '');
+  const [price, setPrice] = useState(product?.price ?? '');
+  const [cost, setCost] = useState(product?.cost ?? '');
+  const [stock, setStock] = useState(product?.stock.toString() ?? '0');
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [subcategoryId, setSubcategoryId] = useState<number | null>(null);
-  const [productTypeId, setProductTypeId] = useState<number | null>(null);
+  const [productTypeId, setProductTypeId] = useState<number | null>(product?.product_type ?? null);
 
-  useEffect(() => {
-    if (product) {
-      setName(product.name);
-      setDescription(product.description ?? '');
-      setPrice(product.price);
-      setCost(product.cost ?? '');
-      setStock(product.stock.toString());
-      setProductTypeId(product.product_type);
-      // Nota: no reconstruimos category/subcategory desde el producto porque
-      // el serializer solo trae product_type. El selector se ajustará si se
-      // navega manualmente; para edición simple esto es aceptable en el MVP.
-    } else {
-      setName('');
-      setDescription('');
-      setPrice('');
-      setCost('');
-      setStock('0');
-      setCategoryId(null);
-      setSubcategoryId(null);
-      setProductTypeId(null);
-    }
-  }, [product, open]);
 
   const createMutation = useMutation({
     mutationFn: createProduct,
@@ -85,6 +68,7 @@ export function ProductFormDialog({ open, onOpenChange, product }: ProductFormDi
         description,
         price,
         product_type: productTypeId,
+        is_active: isActive,
       });
     } else {
       createMutation.mutate({
@@ -94,6 +78,7 @@ export function ProductFormDialog({ open, onOpenChange, product }: ProductFormDi
         cost: cost || null,
         stock: Number(stock),
         product_type: productTypeId,
+        is_active: isActive,
       });
     }
   };
@@ -171,6 +156,7 @@ export function ProductFormDialog({ open, onOpenChange, product }: ProductFormDi
             </p>
           )}
 
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={isActive} onChange={e => setIsActive(e.target.checked)} />Producto activo (disponible para nuevas ventas)</label>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar

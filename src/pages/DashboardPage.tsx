@@ -1,10 +1,17 @@
+import { useCompanyFormatting } from '@/lib/company-formatting';
+import { useState } from 'react';
+import axios from 'axios';
+import { PeriodFilters } from '@/components/dashboard/PeriodFilters';
+import { AnalyticsDetails } from '@/components/dashboard/AnalyticsDetails';
+import type { AnalyticsFilters } from '@/types/analytics-filters';
+import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
 import { TrendingUp, TrendingDown, DollarSign, Receipt, Wallet, Users } from 'lucide-react';
 import { getDashboardOverview } from '@/api/endpoints/dashboard';
-import { getSalesAnalytics, getCustomerAnalytics } from '@/api/endpoints/analytics';
+import { getSalesAnalytics, getCustomerAnalytics, getProductAnalytics, getExpenseAnalytics } from '@/api/endpoints/analytics';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -12,12 +19,9 @@ import {
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 
-function formatCurrency(value: number) {
-  return new Intl.NumberFormat('es-BO', { style: 'currency', currency: 'BOB' }).format(value);
-}
 
 function formatShortDate(value: string) {
-  return new Intl.DateTimeFormat('es-BO', { day: '2-digit', month: 'short' }).format(new Date(value));
+  return new Intl.DateTimeFormat('es-BO', { day: '2-digit', month: 'short' }).format(new Date(value.length === 10 ? `${value}T12:00:00` : value));
 }
 
 interface KpiCardProps {
@@ -26,9 +30,10 @@ interface KpiCardProps {
   trend?: 'up' | 'down' | 'stable';
   percentageChange?: number;
   icon: React.ElementType;
+  lowerIsBetter?: boolean;
 }
 
-function KpiCard({ title, value, trend, percentageChange, icon: Icon }: KpiCardProps) {
+function KpiCard({ title, value, trend, percentageChange, icon: Icon, lowerIsBetter = false }: KpiCardProps) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -40,13 +45,13 @@ function KpiCard({ title, value, trend, percentageChange, icon: Icon }: KpiCardP
         {trend && percentageChange !== undefined && (
           <p className={cn(
             'flex items-center gap-1 text-xs',
-            trend === 'up' && 'text-green-600',
-            trend === 'down' && 'text-red-600',
+            trend !== 'stable' && ((trend === 'down') === lowerIsBetter) && 'text-green-600',
+            trend !== 'stable' && ((trend === 'down') !== lowerIsBetter) && 'text-red-600',
             trend === 'stable' && 'text-muted-foreground'
           )}>
             {trend === 'up' && <TrendingUp className="h-3 w-3" />}
             {trend === 'down' && <TrendingDown className="h-3 w-3" />}
-            {Math.abs(percentageChange)}% vs. período anterior
+            {Math.abs(percentageChange)}% vs. período comparado
           </p>
         )}
       </CardContent>
@@ -55,29 +60,43 @@ function KpiCard({ title, value, trend, percentageChange, icon: Icon }: KpiCardP
 }
 
 export function DashboardPage() {
-  const { data: overview, isLoading: loadingOverview } = useQuery({
-    queryKey: ['dashboard-overview'],
-    queryFn: () => getDashboardOverview('month'),
+  const [filters, setFilters] = useState<AnalyticsFilters>({ period: 'month' });
+  return <div className="space-y-6">
+    <h1 className="text-2xl font-bold">Dashboard</h1>
+    <PeriodFilters onApply={setFilters} />
+    <DashboardContent filters={filters} />
+  </div>;
+}
+
+function DashboardContent({ filters }: { filters: AnalyticsFilters }) {
+  const { formatCurrency } = useCompanyFormatting();
+  const { data: overview, isLoading: loadingOverview, error: overviewError, refetch } = useQuery({
+    queryKey: ['dashboard-overview', filters],
+    queryFn: () => getDashboardOverview(filters),
   });
 
-  const { data: salesAnalytics, isLoading: loadingSales } = useQuery({
-    queryKey: ['sales-analytics'],
-    queryFn: () => getSalesAnalytics('month'),
+  const { data: salesAnalytics, isLoading: loadingSales, error: salesError } = useQuery({
+    queryKey: ['sales-analytics', filters],
+    queryFn: () => getSalesAnalytics(filters),
   });
 
-  const { data: customerAnalytics, isLoading: loadingCustomers } = useQuery({
-    queryKey: ['customer-analytics'],
-    queryFn: () => getCustomerAnalytics('month'),
+  const { data: customerAnalytics, isLoading: loadingCustomers, error: customersError } = useQuery({
+    queryKey: ['customer-analytics', filters],
+    queryFn: () => getCustomerAnalytics(filters),
   });
 
+  const products = useQuery({ queryKey: ['product-analytics', filters], queryFn: () => getProductAnalytics(filters) });
+  const expenses = useQuery({ queryKey: ['expense-analytics', filters], queryFn: () => getExpenseAnalytics(filters) });
+  if (overviewError) {
+    return <div className="space-y-4">
+      <p role="alert">{axios.isAxiosError(overviewError) && overviewError.response?.status === 403
+        ? 'Tu rol no tiene permiso para consultar el dashboard.' : 'No se pudo cargar el resumen. Revisa el período o vuelve a intentarlo.'}</p>
+      <Button onClick={() => void refetch()}>Reintentar</Button></div>;
+  }
   if (loadingOverview || !overview) {
-    return (
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <Skeleton key={i} className="h-32 w-full" />
-        ))}
-      </div>
-    );
+    return <div className="space-y-4"><div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32 w-full" />)}
+    </div></div>;
   }
 
   const evolutionData = salesAnalytics?.evolution.map((d) => ({
@@ -93,10 +112,11 @@ export function DashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">Resumen del mes actual</p>
+        <p className="text-muted-foreground">{overview.period.start.slice(0, 10)} — {overview.period.end.slice(0, 10)}</p>
       </div>
 
+      {overview.comparison_period && <p className="text-sm text-muted-foreground">Comparado con {overview.comparison_period.start.slice(0, 10)} — {overview.comparison_period.end.slice(0, 10)}</p>}
+      {(salesError || customersError || products.isError || expenses.isError) && <p role="alert" className="text-destructive">No se pudieron cargar algunos análisis. Vuelve a cargar la página para reintentar.</p>}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
           title="Ventas"
@@ -106,6 +126,7 @@ export function DashboardPage() {
           icon={DollarSign}
         />
         <KpiCard
+          lowerIsBetter
           title="Gastos"
           value={formatCurrency(overview.expenses.current)}
           trend={overview.expenses.trend}
@@ -113,7 +134,7 @@ export function DashboardPage() {
           icon={Receipt}
         />
         <KpiCard
-          title="Resultado estimado"
+          title="Ventas menos gastos"
           value={formatCurrency(overview.estimated_result)}
           icon={Wallet}
         />
@@ -130,7 +151,7 @@ export function DashboardPage() {
             <CardTitle>Evolución de ventas</CardTitle>
           </CardHeader>
           <CardContent>
-            {loadingSales ? (
+            {salesError ? <p role="alert">No se pudo cargar este análisis.</p> : loadingSales ? (
               <Skeleton className="h-64 w-full" />
             ) : evolutionData.length === 0 ? (
               <p className="flex h-64 items-center justify-center text-sm text-muted-foreground">
@@ -155,7 +176,7 @@ export function DashboardPage() {
             <CardTitle>Top productos por ingresos</CardTitle>
           </CardHeader>
           <CardContent>
-            {loadingSales ? (
+            {salesError ? <p role="alert">No se pudo cargar este análisis.</p> : loadingSales ? (
               <Skeleton className="h-64 w-full" />
             ) : topProductsData.length === 0 ? (
               <p className="flex h-64 items-center justify-center text-sm text-muted-foreground">
@@ -176,12 +197,13 @@ export function DashboardPage() {
         </Card>
       </div>
 
+      <AnalyticsDetails sales={salesAnalytics} customers={customerAnalytics} products={products.data} expenses={expenses.data} loadingProducts={products.isLoading} loadingExpenses={expenses.isLoading} />
       <Card>
         <CardHeader>
           <CardTitle>Clientes destacados</CardTitle>
         </CardHeader>
         <CardContent>
-          {loadingCustomers ? (
+          {customersError ? <p role="alert">No se pudo cargar este análisis.</p> : loadingCustomers ? (
             <Skeleton className="h-32 w-full" />
           ) : (
             <Table>

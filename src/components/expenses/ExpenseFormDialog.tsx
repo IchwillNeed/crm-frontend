@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getExpenseCategories, createExpense, updateExpense } from '@/api/endpoints/expenses';
 import { getPaymentMethods } from '@/api/endpoints/sales';
@@ -20,12 +20,16 @@ interface Props {
   expense?: Expense | null;
 }
 
-export function ExpenseFormDialog({ open, onOpenChange, expense }: Props) {
-  const [categoryId, setCategoryId] = useState<string>('');
-  const [paymentMethodId, setPaymentMethodId] = useState<string>('');
-  const [description, setDescription] = useState('');
-  const [amount, setAmount] = useState('');
-  const [notes, setNotes] = useState('');
+export function ExpenseFormDialog(props: Props) {
+  return props.open ? <ExpenseFormDialogBody key={props.expense?.id ?? "new"} {...props} /> : null;
+}
+
+function ExpenseFormDialogBody({ open, onOpenChange, expense }: Props) {
+  const [categoryId, setCategoryId] = useState<string>(expense?.category.toString() ?? '');
+  const [paymentMethodId, setPaymentMethodId] = useState<string>(expense?.payment_method?.toString() ?? '');
+  const [description, setDescription] = useState(expense?.description ?? '');
+  const [amount, setAmount] = useState(expense?.amount ?? '');
+  const [notes, setNotes] = useState(expense?.notes ?? '');
 
   const queryClient = useQueryClient();
   const isEditing = !!expense;
@@ -33,21 +37,6 @@ export function ExpenseFormDialog({ open, onOpenChange, expense }: Props) {
   const { data: categories } = useQuery({ queryKey: ['expense-categories'], queryFn: getExpenseCategories });
   const { data: paymentMethods } = useQuery({ queryKey: ['payment-methods'], queryFn: getPaymentMethods });
 
-  useEffect(() => {
-    if (expense) {
-      setCategoryId(expense.category.toString());
-      setPaymentMethodId(expense.payment_method?.toString() ?? '');
-      setDescription(expense.description);
-      setAmount(expense.amount);
-      setNotes(expense.notes ?? '');
-    } else {
-      setCategoryId('');
-      setPaymentMethodId('');
-      setDescription('');
-      setAmount('');
-      setNotes('');
-    }
-  }, [expense, open]);
 
   const createMutation = useMutation({
     mutationFn: createExpense,
@@ -104,7 +93,7 @@ export function ExpenseFormDialog({ open, onOpenChange, expense }: Props) {
                 <SelectValue placeholder="Seleccionar" />
               </SelectTrigger>
               <SelectContent>
-                {categories?.map((cat) => (
+                {categories?.filter(cat => cat.is_active || cat.id === expense?.category).map((cat) => (
                   <SelectItem key={cat.id} value={cat.id.toString()}>
                     {cat.name}
                   </SelectItem>
@@ -142,7 +131,7 @@ export function ExpenseFormDialog({ open, onOpenChange, expense }: Props) {
                   <SelectValue placeholder="Sin especificar" />
                 </SelectTrigger>
                 <SelectContent>
-                  {paymentMethods?.map((pm) => (
+                  {paymentMethods?.filter(pm => pm.is_active || pm.id === expense?.payment_method).map((pm) => (
                     <SelectItem key={pm.id} value={pm.id.toString()}>
                       {pm.name}
                     </SelectItem>

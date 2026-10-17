@@ -1,6 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "shadcn/tailwind.css";
+@import "./styles/shadcn.css";
 @import "@fontsource-variable/inter";
 
 @custom-variant dark (&:is(.dark *));
@@ -128,3 +128,4 @@
     @apply font-sans;
     }
 }
+@media print { aside, button, [role="navigation"] { display: none !important; } main { overflow: visible !important; } }

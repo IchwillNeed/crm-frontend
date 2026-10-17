@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -22,8 +22,8 @@ export function LoginPage() {
 
     try {
       await login({ username, password });
-      navigate('/dashboard');
-    } catch (err) {
+      navigate('/');
+    } catch {
       setError('Usuario o contraseña incorrectos.');
     } finally {
       setIsSubmitting(false);
@@ -65,7 +65,14 @@ export function LoginPage() {
             <Button type="submit" className="w-full" disabled={isSubmitting}>
               {isSubmitting ? 'Ingresando...' : 'Ingresar'}
             </Button>
+            <p className="text-center text-sm text-muted-foreground">
+              ¿No tienes cuenta?{' '}
+              <Link to="/signup" className="text-primary underline">
+                Regístrate
+              </Link>
+            </p>
           </form>
+          <a href="/forgot-password" className="block text-sm underline mt-4">Olvidé mi contraseña</a>
         </CardContent>
       </Card>
     </div>

@@ -1,50 +1,32 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-import { login as loginApi, type LoginCredentials } from '@/api/endpoints/auth';
+import { useState, type ReactNode } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { login as loginApi, signup as signupApi, type TokenResponse, type LoginCredentials, type SignupData } from '@/api/endpoints/auth';
+import { apiClient, startSession, clearSession } from '@/api/client';
+import { AuthContext, type CurrentUser } from '@/lib/auth-context';
 
-interface AuthContextType {
-  isAuthenticated: boolean;
-  isLoading: boolean;
-  login: (credentials: LoginCredentials) => Promise<void>;
-  logout: () => void;
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
+const getMe = async () => (await apiClient.get<CurrentUser>('/me/')).data;
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    // Al cargar la app, revisa si ya hay un token guardado
-    const token = localStorage.getItem('access_token');
-    setIsAuthenticated(!!token);
-    setIsLoading(false);
-  }, []);
-
-  const login = async (credentials: LoginCredentials) => {
-    const data = await loginApi(credentials);
-    localStorage.setItem('access_token', data.access);
-    localStorage.setItem('refresh_token', data.refresh);
-    setIsAuthenticated(true);
-  };
-
-  const logout = () => {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    setIsAuthenticated(false);
-  };
-
-  return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading, login, logout }}>
-      {children}
-    </AuthContext.Provider>
-  );
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth debe usarse dentro de un AuthProvider');
+  const client = useQueryClient();
+  const [hasToken, setHasToken] = useState(() => !!localStorage.getItem('access_token'));
+  const profile = useQuery({ queryKey: ['me'], queryFn: getMe, enabled: hasToken, retry: false });
+  async function accept(tokens: TokenResponse) {
+    client.clear();
+    startSession(tokens);
+    try {
+      await client.fetchQuery({ queryKey: ['me'], queryFn: getMe, retry: false });
+      setHasToken(true);
+    } catch (error) {
+      clearSession();
+      setHasToken(false);
+      throw error;
+    }
   }
-  return context;
+  const login = async (data: LoginCredentials) => accept(await loginApi(data));
+  const signup = async (data: SignupData) => accept(await signupApi(data));
+  const logout = () => {
+    clearSession();
+    client.clear();
+    setHasToken(false);
+  };
+  return <AuthContext.Provider value={{ user: profile.data, isAuthenticated: hasToken, isLoading: hasToken && profile.isPending, error: profile.error, login, signup, logout }}>{children}</AuthContext.Provider>;
 }

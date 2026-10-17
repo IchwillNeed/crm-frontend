@@ -1,338 +1,202 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getMyCompany, updateMyCompany, updateMyCompanySettings } from '@/api/endpoints/company';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
+import { Pencil, UserX, Plus } from 'lucide-react';
+import { getCompanyUsers, deactivateCompanyUser, updateCompanyUser } from '@/api/endpoints/users';
+import type { CompanyUser } from '@/types/user';
+import { Badge } from '@/components/ui/badge';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from '@/components/ui/table';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { UserFormDialog } from '@/components/users/UserFormDialog';
 
+import { useAuth } from '@/lib/auth-context';
+import { usePermissions } from '@/lib/permissions';
+import { apiClient } from '@/api/client';
+import type { Company, CompanySettings } from '@/types/company';
 export function SettingsPage() {
-  return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Configuración</h1>
-        <p className="text-muted-foreground">Administra los datos y preferencias de tu empresa</p>
-      </div>
-
-      <Tabs defaultValue="company">
-        <TabsList>
-          <TabsTrigger value="company">Empresa</TabsTrigger>
-          <TabsTrigger value="preferences">Preferencias</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="company">
-          <CompanyTab />
-        </TabsContent>
-        <TabsContent value="preferences">
-          <PreferencesTab />
-        </TabsContent>
-      </Tabs>
-    </div>
-  );
+  const { can } = usePermissions();
+  const { data: company, isPending, error, refetch } = useQuery({ queryKey: ['my-company'], queryFn: getMyCompany });
+  return <div className="space-y-6">
+    <h1 className="text-2xl font-bold">Configuración</h1>
+    <Tabs defaultValue="account"><TabsList className="flex flex-wrap h-auto">
+      <TabsTrigger value="account">Mi cuenta</TabsTrigger>
+      {can('settings') && <><TabsTrigger value="company">Empresa</TabsTrigger><TabsTrigger value="preferences">Preferencias</TabsTrigger><TabsTrigger value="users">Usuarios</TabsTrigger></>}
+    </TabsList>
+      <TabsContent value="account"><AccountTab /></TabsContent>
+      {can('settings') && <>
+        {isPending && <Skeleton className="h-32 w-full" />}
+        {error && <p role="alert">No se pudo cargar la empresa. <Button onClick={() => void refetch()}>Reintentar</Button></p>}
+        {company && <>
+          <TabsContent value="company"><CompanyTab key={company.id} company={company} /></TabsContent>
+          <TabsContent value="preferences"><PreferencesTab key={JSON.stringify(company.settings)} settings={company.settings} /></TabsContent>
+        </>}
+        <TabsContent value="users"><UsersTab /></TabsContent>
+      </>}
+    </Tabs>
+  </div>;
 }
 
-function CompanyTab() {
-    const queryClient = useQueryClient();
-    const { data: company, isLoading } = useQuery({ queryKey: ['my-company'], queryFn: getMyCompany });
-    const [isEditing, setIsEditing] = useState(false);
-
-    const [name, setName] = useState('');
-    const [businessName, setBusinessName] = useState('');
-    const [description, setDescription] = useState('');
-    const [email, setEmail] = useState('');
-    const [phone, setPhone] = useState('');
-    const [address, setAddress] = useState('');
-    const [city, setCity] = useState('');
-    const [country, setCountry] = useState('');
-    const [website, setWebsite] = useState('');
-
-    useEffect(() => {
-        if (company) {
-        setName(company.name);
-        setBusinessName(company.business_name ?? '');
-        setDescription(company.description ?? '');
-        setEmail(company.email ?? '');
-        setPhone(company.phone ?? '');
-        setAddress(company.address ?? '');
-        setCity(company.city ?? '');
-        setCountry(company.country ?? '');
-        setWebsite(company.website ?? '');
-        }
-    }, [company]);
-
-    const mutation = useMutation({
-        mutationFn: updateMyCompany,
-        onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['my-company'] });
-        toast.success('Datos de la empresa guardados correctamente');
-        setIsEditing(false);
-        },
-    });
-
-    const normalizeWebsite = (value: string): string | null => {
-        if (!value) return null;
-        const trimmed = value.trim().toLowerCase();
-        if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
-        return `https://${trimmed}`;
-    };
-
-    const handleSubmit = (e: FormEvent) => {
-        e.preventDefault();
-        mutation.mutate({
-        name,
-        business_name: businessName || null,
-        description: description || null,
-        email: email || null,
-        phone: phone || null,
-        address: address || null,
-        city: city || null,
-        country: country || null,
-        website: normalizeWebsite(website),
-        });
-    };
-
-    const handleCancel = () => {
-        if (company) {
-        setName(company.name);
-        setBusinessName(company.business_name ?? '');
-        setDescription(company.description ?? '');
-        setEmail(company.email ?? '');
-        setPhone(company.phone ?? '');
-        setAddress(company.address ?? '');
-        setCity(company.city ?? '');
-        setCountry(company.country ?? '');
-        setWebsite(company.website ?? '');
-        }
-        setIsEditing(false);
-    };
-
-    if (isLoading) {
-        return <Skeleton className="mt-4 h-96 w-full" />;
-    }
-
-    if (!isEditing) {
-        return (
-        <Card className="mt-4">
-            <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-                <CardTitle>Datos de la empresa</CardTitle>
-                <CardDescription>Esta información se usa en reportes y documentos.</CardDescription>
-            </div>
-            <Button variant="outline" onClick={() => setIsEditing(true)}>
-                Editar
-            </Button>
-            </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
-            <InfoRow label="Nombre comercial" value={company?.name} />
-            <InfoRow label="Razón social" value={company?.business_name} />
-            <InfoRow label="Descripción" value={company?.description} full />
-            <InfoRow label="Email" value={company?.email} />
-            <InfoRow label="Teléfono" value={company?.phone} />
-            <InfoRow label="Dirección" value={company?.address} full />
-            <InfoRow label="Ciudad" value={company?.city} />
-            <InfoRow label="País" value={company?.country} />
-            <InfoRow label="Sitio web" value={company?.website} />
-            </CardContent>
-        </Card>
-        );
-    }
-
-    return (
-        <Card className="mt-4">
-        <CardHeader>
-            <CardTitle>Editar datos de la empresa</CardTitle>
-        </CardHeader>
-        <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                <Label htmlFor="name">Nombre comercial</Label>
-                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
-                </div>
-                <div className="space-y-2">
-                <Label htmlFor="business_name">Razón social</Label>
-                <Input id="business_name" value={businessName} onChange={(e) => setBusinessName(e.target.value)} />
-                </div>
-            </div>
-
-            <div className="space-y-2">
-                <Label htmlFor="description">Descripción</Label>
-                <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                <Label htmlFor="phone">Teléfono</Label>
-                <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
-                </div>
-            </div>
-
-            <div className="space-y-2">
-                <Label htmlFor="address">Dirección</Label>
-                <Input id="address" value={address} onChange={(e) => setAddress(e.target.value)} />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                <Label htmlFor="city">Ciudad</Label>
-                <Input id="city" value={city} onChange={(e) => setCity(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                <Label htmlFor="country">País</Label>
-                <Input id="country" value={country} onChange={(e) => setCountry(e.target.value)} />
-                </div>
-            </div>
-
-            <div className="space-y-2">
-                <Label htmlFor="website">Sitio web</Label>
-                <Input id="website" value={website} onChange={(e) => setWebsite(e.target.value)} />
-            </div>
-
-            <div className="flex gap-3">
-                <Button type="submit" disabled={mutation.isPending}>
-                {mutation.isPending ? 'Guardando...' : 'Guardar cambios'}
-                </Button>
-                <Button type="button" variant="outline" onClick={handleCancel}>
-                Cancelar
-                </Button>
-            </div>
-            </form>
-        </CardContent>
-        </Card>
-    );
+const companyFields = [
+  ['name', 'Nombre comercial'], ['business_name', 'Razón social'], ['email', 'Email'], ['phone', 'Teléfono'],
+  ['address', 'Dirección'], ['city', 'Ciudad'], ['country', 'País'], ['website', 'Sitio web'],
+] as const;
+function CompanyTab({ company }: { company: Company }) {
+  const [form, setForm] = useState<Partial<Company>>(company);
+  const mutation = useMutation({ mutationFn: updateMyCompany, onSuccess: () => toast.success('Empresa actualizada') });
+  function submit(event: FormEvent) {
+    event.preventDefault();
+    const website = form.website?.trim();
+    mutation.mutate({ ...Object.fromEntries(companyFields.map(([key]) => [key, form[key] || (key === 'name' ? '' : null)])), description: form.description,
+      website: website ? (/^https?:\/\//i.test(website) ? website : `https://${website}`) : null });
+  }
+  return <Card><CardHeader><CardTitle>Datos de la empresa</CardTitle></CardHeader><CardContent>
+    <form onSubmit={submit} className="space-y-4"><div className="grid gap-4 sm:grid-cols-2">
+      {companyFields.map(([key, label]) => <label key={key} className="space-y-2 text-sm">{label}<Input value={form[key] ?? ''} required={key === 'name'} type={key === 'email' ? 'email' : 'text'} onChange={e => setForm({ ...form, [key]: e.target.value })} /></label>)}
+    </div><Label htmlFor="company-description">Descripción</Label><Textarea id="company-description" value={form.description ?? ''} onChange={e => setForm({ ...form, description: e.target.value })} />
+      <Button disabled={mutation.isPending}>Guardar empresa</Button>
+    </form>
+  </CardContent></Card>;
+}
+function PreferencesTab({ settings }: { settings: CompanySettings }) {
+  const [currency, setCurrency] = useState(settings?.currency ?? 'BOB');
+  const [timezone, setTimezone] = useState(settings?.timezone ?? 'America/La_Paz');
+  const [language, setLanguage] = useState(settings?.language ?? 'es');
+  const mutation = useMutation({ mutationFn: updateMyCompanySettings, onSuccess: () => toast.success('Preferencias actualizadas') });
+  return <Card><CardHeader><CardTitle>Moneda y fechas</CardTitle><CardDescription>La moneda cambia la presentación; no convierte importes históricos. El idioma define el formato de números y fechas; la interfaz del MVP está en español.</CardDescription></CardHeader><CardContent>
+    <form onSubmit={e => { e.preventDefault(); mutation.mutate({ currency, timezone, language }); }} className="space-y-4">
+      <label className="block text-sm">Moneda<select aria-label="Moneda" className="block w-full rounded border bg-background p-2" value={currency} onChange={e => setCurrency(e.target.value)}>{['BOB','USD','EUR','PEN','ARS','BRL','CLP','COP','MXN','PYG','UYU'].map(code => <option key={code}>{code}</option>)}</select></label>
+      <label className="block text-sm">Zona horaria<Input aria-label="Zona horaria" value={timezone} onChange={e => setTimezone(e.target.value)} required list="timezones" /><datalist id="timezones">{['America/La_Paz','America/Lima','America/Bogota','America/Santiago','America/Argentina/Buenos_Aires','America/Mexico_City','Europe/Madrid','UTC'].map(zone => <option key={zone}>{zone}</option>)}</datalist></label>
+      <label className="block text-sm">Formato regional<select aria-label="Formato regional" className="block w-full rounded border bg-background p-2" value={language} onChange={e => setLanguage(e.target.value)}><option value="es">Español</option><option value="en">Inglés</option><option value="pt">Portugués</option></select></label>
+      <Button disabled={mutation.isPending}>Guardar preferencias</Button>
+    </form>
+  </CardContent></Card>;
+}
+function AccountTab() {
+  const { user, logout } = useAuth();
+  const [oldPassword, setOldPassword] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmation, setConfirmation] = useState('');
+  const mutation = useMutation({ mutationFn: () => apiClient.post('/password/change/', { old_password: oldPassword, new_password: password }), onSuccess: () => { toast.success('Contraseña actualizada. Inicia sesión nuevamente.'); logout(); } });
+  return <Card><CardHeader><CardTitle>Mi cuenta</CardTitle><CardDescription>{user?.username} · {user?.role_name}</CardDescription></CardHeader><CardContent>
+    <form className="max-w-md space-y-4" onSubmit={e => { e.preventDefault(); if (password !== confirmation) { toast.error('Las contraseñas no coinciden.'); return; } mutation.mutate(); }}>
+      <label className="block text-sm">Contraseña actual<Input type="password" autoComplete="current-password" required value={oldPassword} onChange={e => setOldPassword(e.target.value)} /></label>
+      <label className="block text-sm">Nueva contraseña<Input type="password" autoComplete="new-password" minLength={8} required value={password} onChange={e => setPassword(e.target.value)} /></label>
+      <label className="block text-sm">Repetir nueva contraseña<Input type="password" autoComplete="new-password" required value={confirmation} onChange={e => setConfirmation(e.target.value)} /></label>
+      <Button disabled={mutation.isPending}>Cambiar contraseña</Button>
+    </form>
+  </CardContent></Card>;
 }
 
-function InfoRow({ label, value, full }: { label: string; value?: string | null; full?: boolean }) {
-  return (
-    <div className={full ? 'col-span-2' : ''}>
-      <p className="text-muted-foreground">{label}</p>
-      <p className="font-medium">{value || '—'}</p>
-    </div>
-  );
-}
-
-function PreferencesTab() {
+function UsersTab() {
+  const { user: currentUser } = useAuth();
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editing, setEditing] = useState<CompanyUser | null>(null);
+  const [deactivating, setDeactivating] = useState<CompanyUser | null>(null);
   const queryClient = useQueryClient();
-  const { data: company, isLoading } = useQuery({ queryKey: ['my-company'], queryFn: getMyCompany });
 
-  const [currency, setCurrency] = useState('');
-  const [language, setLanguage] = useState('');
-  const [enableRecommendations, setEnableRecommendations] = useState(true);
-  const [enableExpenses, setEnableExpenses] = useState(true);
-  const [enableInventory, setEnableInventory] = useState(true);
+  const { data: users, isLoading } = useQuery({ queryKey: ['company-users'], queryFn: getCompanyUsers });
 
-  useEffect(() => {
-    if (company?.settings) {
-      setCurrency(company.settings.currency);
-      setLanguage(company.settings.language);
-      setEnableRecommendations(company.settings.enable_recommendations);
-      setEnableExpenses(company.settings.enable_expenses);
-      setEnableInventory(company.settings.enable_inventory);
-    }
-  }, [company]);
-
-  const mutation = useMutation({
-    mutationFn: updateMyCompanySettings,
+  const reactivate = useMutation({ mutationFn: (id: number) => updateCompanyUser(id, { is_active: true }), onSuccess: () => toast.success('Usuario reactivado') });
+  const deactivateMutation = useMutation({
+    mutationFn: deactivateCompanyUser,
     onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['my-company'] });
-        toast.success('Preferencias actualizadas');
+      queryClient.invalidateQueries({ queryKey: ['company-users'] });
+      toast.success('Usuario desactivado');
+      setDeactivating(null);
     },
   });
 
-  const handleToggle = (field: string, value: boolean) => {
-    mutation.mutate({ [field]: value });
-  };
-
-  const handleSaveText = (e: FormEvent) => {
-    e.preventDefault();
-    mutation.mutate({ currency, language });
-  };
-
-  if (isLoading) {
-    return <Skeleton className="mt-4 h-96 w-full" />;
-  }
-
   return (
-    <div className="mt-4 space-y-6">
+    <div className="mt-4 space-y-4">
+      <div className="flex justify-end">
+        <Button onClick={() => { setEditing(null); setDialogOpen(true); }}>
+          <Plus className="mr-2 h-4 w-4" /> Nuevo usuario
+        </Button>
+      </div>
+
       <Card>
         <CardHeader>
-          <CardTitle>General</CardTitle>
+          <CardTitle>Usuarios de la empresa</CardTitle>
+          <CardDescription>Administra quién tiene acceso al sistema.</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSaveText} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="currency">Moneda</Label>
-                <Input id="currency" value={currency} onChange={(e) => setCurrency(e.target.value)} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="language">Idioma</Label>
-                <Input id="language" value={language} onChange={(e) => setLanguage(e.target.value)} />
-              </div>
-            </div>
-            <Button type="submit" disabled={mutation.isPending}>
-              Guardar
-            </Button>
-          </form>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Nombre</TableHead>
+                <TableHead>Usuario</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Rol</TableHead>
+                <TableHead>Estado</TableHead>
+                <TableHead className="text-right">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow><TableCell colSpan={6}><Skeleton className="h-6 w-full" /></TableCell></TableRow>
+              ) : (
+                users?.map((u) => (
+                  <TableRow key={u.id}>
+                    <TableCell className="font-medium">{u.first_name} {u.last_name}</TableCell>
+                    <TableCell>{u.username}</TableCell>
+                    <TableCell>{u.email}</TableCell>
+                    <TableCell>{u.role_name || '—'}</TableCell>
+                    <TableCell>
+                      <Badge variant={u.is_active ? 'default' : 'destructive'}>
+                        {u.is_active ? 'Activo' : 'Inactivo'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {!u.is_active && <Button disabled={reactivate.isPending} onClick={() => reactivate.mutate(u.id)}>Reactivar</Button>}
+                      <Button variant="ghost" aria-label="Editar usuario" size="icon" onClick={() => { setEditing(u); setDialogOpen(true); }}>
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      {u.is_active && u.id !== currentUser?.id && (
+                        <Button variant="ghost" aria-label="Desactivar usuario" size="icon" onClick={() => setDeactivating(u)}>
+                          <UserX className="h-4 w-4 text-destructive" />
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Funcionalidades</CardTitle>
-          <CardDescription>Activa o desactiva módulos según lo que necesite tu negocio.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Recomendaciones</p>
-              <p className="text-sm text-muted-foreground">Sugerencias de productos basadas en patrones de venta</p>
-            </div>
-            <Switch
-              checked={enableRecommendations}
-              onCheckedChange={(val) => {
-                setEnableRecommendations(val);
-                handleToggle('enable_recommendations', val);
-              }}
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Gastos</p>
-              <p className="text-sm text-muted-foreground">Registro y análisis de gastos del negocio</p>
-            </div>
-            <Switch
-              checked={enableExpenses}
-              onCheckedChange={(val) => {
-                setEnableExpenses(val);
-                handleToggle('enable_expenses', val);
-              }}
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Inventario</p>
-              <p className="text-sm text-muted-foreground">Control de stock y reabastecimiento</p>
-            </div>
-            <Switch
-              checked={enableInventory}
-              onCheckedChange={(val) => {
-                setEnableInventory(val);
-                handleToggle('enable_inventory', val);
-              }}
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <UserFormDialog open={dialogOpen} onOpenChange={setDialogOpen} user={editing} />
+
+      <AlertDialog open={!!deactivating} onOpenChange={() => setDeactivating(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Desactivar usuario?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deactivating?.first_name} no podrá iniciar sesión hasta que sea reactivado.
+              Su historial de ventas y gastos se conserva.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deactivating && deactivateMutation.mutate(deactivating.id)}>
+              Desactivar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
