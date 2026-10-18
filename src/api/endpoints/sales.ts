@@ -31,3 +31,8 @@ export const getPaymentMethods = async (): Promise<PaymentMethod[]> => {
 };
 export const getCustomerSales = async (id: number): Promise<Sale[]> => (await apiClient.get<Sale[]>('/sales/', { params: { customer: id } })).data;
 export const updateSaleStatus = async (id: number, status: 'Completed' | 'Cancelled'): Promise<Sale> => (await apiClient.patch<Sale>(`/sales/${id}/`, { status })).data;
+export const partialReturnSale = async (
+  id: number,
+  data: { sale_item: number; quantity: number; reason?: string }
+): Promise<Sale> => (await apiClient.post<Sale>(`/sales/${id}/partial_return/`, data)).data;
+

@@ -3,9 +3,23 @@ export interface SaleItem {
   sale: number;
   product: number;
   quantity: number;
+  returned_quantity?: number;
   unit_price: string;
   unit_cost: string | null;
   subtotal: string;
+}
+
+export interface SaleReturn {
+  id: number;
+  sale: number;
+  sale_item: number;
+  product: number;
+  user: number;
+  quantity: number;
+  unit_price: string;
+  refund_amount: string;
+  reason: string | null;
+  created_at: string;
 }
 
 export interface Sale {
@@ -18,6 +32,7 @@ export interface Sale {
   status: 'Completed' | 'Cancelled';
   notes: string | null;
   items: SaleItem[];
+  returns?: SaleReturn[];
   created_at: string;
   updated_at: string;
 }
