@@ -21,6 +21,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { UserFormDialog } from '@/components/users/UserFormDialog';
+import { PlanTab } from '@/components/subscription/PlanTab';
 
 import { useAuth } from '@/lib/auth-context';
 import { usePermissions } from '@/lib/permissions';
@@ -33,7 +34,7 @@ export function SettingsPage() {
     <h1 className="text-2xl font-bold">Configuración</h1>
     <Tabs defaultValue="account"><TabsList className="flex flex-wrap h-auto">
       <TabsTrigger value="account">Mi cuenta</TabsTrigger>
-      {can('settings') && <><TabsTrigger value="company">Empresa</TabsTrigger><TabsTrigger value="preferences">Preferencias</TabsTrigger><TabsTrigger value="users">Usuarios</TabsTrigger></>}
+      {can('settings') && <><TabsTrigger value="company">Empresa</TabsTrigger><TabsTrigger value="preferences">Preferencias</TabsTrigger><TabsTrigger value="users">Usuarios</TabsTrigger><TabsTrigger value="plan">Plan</TabsTrigger></>}
     </TabsList>
       <TabsContent value="account"><AccountTab /></TabsContent>
       {can('settings') && <>
@@ -44,6 +45,7 @@ export function SettingsPage() {
           <TabsContent value="preferences"><PreferencesTab key={JSON.stringify(company.settings)} settings={company.settings} /></TabsContent>
         </>}
         <TabsContent value="users"><UsersTab /></TabsContent>
+        <TabsContent value="plan"><PlanTab /></TabsContent>
       </>}
     </Tabs>
   </div>;
