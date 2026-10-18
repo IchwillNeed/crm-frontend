@@ -1,6 +1,6 @@
 import { usePermissions } from '@/lib/permissions';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, Package, ShoppingCart, Receipt, Settings, LogOut, Tags } from 'lucide-react';
+import { LayoutDashboard, Users, Package, ShoppingCart, Receipt, Settings, LogOut, Tags, Truck } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { cn } from '@/lib/utils';
 
@@ -10,6 +10,7 @@ const navItems = [
   { to: '/products', label: 'Productos', icon: Package },
   { to: '/catalog', label: 'Catálogo', icon: Tags },
   { to: '/sales', label: 'Ventas', icon: ShoppingCart },
+  { to: '/purchases', label: 'Compras', icon: Truck },
   { to: '/expenses', label: 'Gastos', icon: Receipt },
   { to: '/settings', label: 'Configuración', icon: Settings },
 ];
@@ -26,7 +27,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex flex-wrap gap-1 p-3 md:block md:flex-1 md:space-y-1">
-        {navItems.filter(item => item.to !== '/dashboard' || can('dashboard')).filter(item => item.to !== '/expenses' || can('expenses')).map((item) => (
+        {navItems.filter(item => item.to !== '/dashboard' || can('dashboard')).filter(item => (item.to !== '/expenses' && item.to !== '/purchases') || can('expenses')).map((item) => (
           <NavLink
             key={item.to}
             to={item.to}

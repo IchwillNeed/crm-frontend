@@ -20,6 +20,7 @@ const SettingsPage = lazy(() => import('@/pages/SettingsPage').then(module => ({
 import { Toaster } from '@/components/ui/sonner';
 const CustomerDetailPage = lazy(() => import('@/pages/CustomerDetailPage').then(module => ({ default: module.CustomerDetailPage })));
 const SignupPage = lazy(() => import('@/pages/SignupPage').then(module => ({ default: module.SignupPage })));
+const PurchasesPage = lazy(() => import('@/pages/PurchasesPage').then(module => ({ default: module.PurchasesPage })));
 
 import { queryClient } from '@/lib/query-client';
 
@@ -61,6 +62,7 @@ function AppRoutes() {
         <Route path="/catalog" element={<CatalogPage />} />
         <Route path="/sales" element={<SalesPage />} />
         <Route path="/sales/new" element={<RoleRoute permission="sales.create"><NewSalePage /></RoleRoute>} />
+        <Route path="/purchases" element={<RoleRoute permission="expenses"><PurchasesPage /></RoleRoute>} />
         <Route path="/expenses" element={<RoleRoute permission="expenses"><ExpensesPage /></RoleRoute>} />
         <Route path="/sales/:id" element={<SaleDetailPage />} />
         <Route path="/settings" element={<SettingsPage />} />
