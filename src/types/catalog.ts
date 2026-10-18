@@ -29,6 +29,7 @@ export interface Product {
   price: string;
   cost: string | null;
   stock: number;
+  min_stock: number;
   image: string | null;
   is_active: boolean;
   created_at: string;

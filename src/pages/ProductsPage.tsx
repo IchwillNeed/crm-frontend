@@ -124,8 +124,11 @@ export function ProductsPage() {
                   <TableCell>{formatCurrency(product.cost)}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      {product.stock}
-                      {product.stock <= LOW_STOCK_THRESHOLD && (
+                      <span>{product.stock}</span>
+                      <span className="text-xs text-muted-foreground" title="Stock mínimo configurado">
+                        (mín. {product.min_stock ?? LOW_STOCK_THRESHOLD})
+                      </span>
+                      {product.stock <= (product.min_stock ?? LOW_STOCK_THRESHOLD) && (
                         <Badge variant="destructive">Bajo stock</Badge>
                       )}
                     </div>

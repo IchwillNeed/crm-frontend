@@ -35,6 +35,7 @@ function ProductFormDialogBody({ open, onOpenChange, product }: ProductFormDialo
   const [price, setPrice] = useState(product?.price ?? '');
   const [cost, setCost] = useState(product?.cost ?? '');
   const [stock, setStock] = useState(product?.stock.toString() ?? '0');
+  const [minStock, setMinStock] = useState((product?.min_stock ?? 5).toString());
   const [categoryId, setCategoryId] = useState<number | null>(null);
   const [subcategoryId, setSubcategoryId] = useState<number | null>(null);
   const [productTypeId, setProductTypeId] = useState<number | null>(product?.product_type ?? null);
@@ -67,6 +68,7 @@ function ProductFormDialogBody({ open, onOpenChange, product }: ProductFormDialo
         name,
         description,
         price,
+        min_stock: Number(minStock),
         product_type: productTypeId,
         is_active: isActive,
       });
@@ -77,6 +79,7 @@ function ProductFormDialogBody({ open, onOpenChange, product }: ProductFormDialo
         price,
         cost: cost || null,
         stock: Number(stock),
+        min_stock: Number(minStock),
         product_type: productTypeId,
         is_active: isActive,
       });
@@ -113,7 +116,7 @@ function ProductFormDialogBody({ open, onOpenChange, product }: ProductFormDialo
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
             <div className="space-y-2">
               <Label htmlFor="price">Precio</Label>
               <Input
@@ -122,6 +125,17 @@ function ProductFormDialogBody({ open, onOpenChange, product }: ProductFormDialo
                 step="0.01"
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="min_stock">Stock mínimo (alerta)</Label>
+              <Input
+                id="min_stock"
+                type="number"
+                min="0"
+                value={minStock}
+                onChange={(e) => setMinStock(e.target.value)}
                 required
               />
             </div>
