@@ -1,6 +1,21 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Lightbulb, AlertTriangle, Sparkles, CheckCircle2, ArrowRight, PackagePlus, Repeat } from 'lucide-react';
-import type { DashboardInsights } from '@/types/analytics';
+import { useMutation } from '@tanstack/react-query';
+import {
+  Lightbulb,
+  AlertTriangle,
+  Sparkles,
+  CheckCircle2,
+  ArrowRight,
+  PackagePlus,
+  Repeat,
+  Mail,
+  Send,
+} from 'lucide-react';
+import { sendInsightsEmail } from '@/api/endpoints/analytics';
+import type { DashboardInsights, PromotionPreset } from '@/types/analytics';
+import type { AnalyticsFilters } from '@/types/analytics-filters';
+import { errorMessage } from '@/lib/errors';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -8,13 +23,29 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
+import { SendPromotionDialog } from './SendPromotionDialog';
 
 interface InsightsSectionProps {
   insights?: DashboardInsights;
   loading?: boolean;
+  filters?: AnalyticsFilters;
 }
 
-export function InsightsSection({ insights, loading }: InsightsSectionProps) {
+export function InsightsSection({ insights, loading, filters = {} }: InsightsSectionProps) {
+  const [promoPreset, setPromoPreset] = useState<PromotionPreset | null>(null);
+  const [promoOpen, setPromoOpen] = useState(false);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const summaryEmailMutation = useMutation({
+    mutationFn: () => sendInsightsEmail(filters),
+    onSuccess: (res) => {
+      setFeedback({ type: 'success', text: res.detail });
+    },
+    onError: (err) => {
+      setFeedback({ type: 'error', text: errorMessage(err) });
+    },
+  });
+
   if (loading) {
     return <Skeleton className="h-48 w-full" />;
   }
@@ -28,17 +59,66 @@ export function InsightsSection({ insights, loading }: InsightsSectionProps) {
     insights.frequent_pairs.length > 0 ||
     insights.restock_suggestions.length > 0;
 
+  function openPromotion(preset: PromotionPreset) {
+    setPromoPreset(preset);
+    setPromoOpen(true);
+  }
+
   return (
     <div className="space-y-6">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+        <CardHeader className="flex flex-wrap items-center justify-between gap-3 space-y-0 pb-3">
           <div className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-amber-500" />
-            <CardTitle className="text-lg">Inteligencia y Recomendaciones</CardTitle>
+            <CardTitle className="text-lg">Inteligencia, Sugerencias y Promociones</CardTitle>
+            <Badge variant="secondary">Fase 6 — Intelligence</Badge>
           </div>
-          <Badge variant="secondary">Fase 6 — Intelligence</Badge>
+          <div className="flex flex-wrap items-center gap-2 print:hidden">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={summaryEmailMutation.isPending}
+              onClick={() => {
+                setFeedback(null);
+                summaryEmailMutation.mutate();
+              }}
+            >
+              <Mail className="mr-1.5 h-3.5 w-3.5" />
+              {summaryEmailMutation.isPending ? 'Enviando...' : 'Enviar resumen a mi correo'}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() =>
+                openPromotion({
+                  audience: 'all',
+                  subject: '¡Promociones y novedades especiales para ti!',
+                  message:
+                    'Te compartimos nuestras ofertas y combos destacados de la semana. ¡Contáctanos para hacer tu pedido!',
+                  product_ids: [],
+                })
+              }
+            >
+              <Send className="mr-1.5 h-3.5 w-3.5" />
+              Enviar promoción a clientes
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
+          {feedback && (
+            <p
+              role="status"
+              className={`rounded-md border px-3 py-2 text-xs ${
+                feedback.type === 'success'
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                  : 'border-red-200 bg-red-50 text-red-800'
+              }`}
+            >
+              {feedback.text}
+            </p>
+          )}
+
           {!hasContent ? (
             <p className="text-sm text-muted-foreground">
               Registra más ventas y movimientos en este período para desbloquear patrones de compra y sugerencias inteligentes.
@@ -73,16 +153,27 @@ export function InsightsSection({ insights, loading }: InsightsSectionProps) {
                             <p className="text-xs text-muted-foreground">{item.description}</p>
                           </div>
                         </div>
-                        {item.action_label && item.action_path && (
-                          <div className="flex justify-end">
+                        <div className="flex flex-wrap justify-end gap-2 print:hidden">
+                          {item.promotion_preset && (
+                            <Button
+                              type="button"
+                              variant="secondary"
+                              size="sm"
+                              onClick={() => openPromotion(item.promotion_preset!)}
+                            >
+                              <Send className="mr-1.5 h-3.5 w-3.5" />
+                              Promocionar por email
+                            </Button>
+                          )}
+                          {item.action_label && item.action_path && (
                             <Button asChild variant="outline" size="sm">
                               <Link to={item.action_path}>
                                 {item.action_label}
                                 <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
                               </Link>
                             </Button>
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
                     );
                   })}
@@ -102,6 +193,7 @@ export function InsightsSection({ insights, loading }: InsightsSectionProps) {
                           <TableRow>
                             <TableHead>Combinación de productos</TableHead>
                             <TableHead className="text-right">Veces juntos</TableHead>
+                            <TableHead className="text-right print:hidden">Acción</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -114,6 +206,25 @@ export function InsightsSection({ insights, loading }: InsightsSectionProps) {
                               </TableCell>
                               <TableCell className="text-right font-semibold">
                                 {pair.times_bought_together}
+                              </TableCell>
+                              <TableCell className="text-right print:hidden">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 text-xs"
+                                  onClick={() =>
+                                    openPromotion({
+                                      audience: 'related_buyers',
+                                      subject: `Promo Combo: ${pair.product_a_name} + ${pair.product_b_name}`,
+                                      message: `Sabemos que te gustan nuestros productos y armamos una promoción especial combinando ${pair.product_a_name} + ${pair.product_b_name}. ¡Escríbenos para aprovecharla!`,
+                                      product_ids: [pair.product_a_id, pair.product_b_id],
+                                    })
+                                  }
+                                >
+                                  <Send className="mr-1 h-3 w-3" />
+                                  Promocionar
+                                </Button>
                               </TableCell>
                             </TableRow>
                           ))}
@@ -160,7 +271,13 @@ export function InsightsSection({ insights, loading }: InsightsSectionProps) {
           )}
         </CardContent>
       </Card>
+
+      <SendPromotionDialog
+        open={promoOpen}
+        onOpenChange={setPromoOpen}
+        preset={promoPreset}
+        onSent={(detail) => setFeedback({ type: 'success', text: detail })}
+      />
     </div>
   );
 }
-

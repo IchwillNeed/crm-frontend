@@ -69,6 +69,15 @@ export interface RestockSuggestion {
   suggested_restock: number;
 }
 
+export type PromotionAudience = 'all' | 'inactive' | 'related_buyers';
+
+export interface PromotionPreset {
+  audience: PromotionAudience;
+  subject: string;
+  message: string;
+  product_ids?: number[];
+}
+
 export interface InsightItem {
   id: string;
   type: 'info' | 'warning' | 'success';
@@ -77,6 +86,7 @@ export interface InsightItem {
   description: string;
   action_label?: string;
   action_path?: string;
+  promotion_preset?: PromotionPreset;
 }
 
 export interface DashboardInsights {
@@ -85,4 +95,5 @@ export interface DashboardInsights {
   frequent_pairs: FrequentPair[];
   restock_suggestions: RestockSuggestion[];
   insights: InsightItem[];
-}
+}
+

@@ -159,7 +159,7 @@ function DashboardContent({ filters }: { filters: AnalyticsFilters }) {
         />
       </div>
 
-      <InsightsSection insights={insights.data} loading={insights.isLoading} />
+      <InsightsSection insights={insights.data} loading={insights.isLoading} filters={filters} />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card>

@@ -6,6 +6,7 @@ import type {
   ProductAnalytics,
   ExpenseAnalytics,
   DashboardInsights,
+  PromotionPreset,
 } from '@/types/analytics';
 
 export const getSalesAnalytics = async (filters: AnalyticsFilters = {}): Promise<SalesAnalytics> => {
@@ -32,4 +33,26 @@ export const getDashboardInsights = async (filters: AnalyticsFilters = {}): Prom
   const response = await apiClient.get<DashboardInsights>('/dashboard/insights/', { params: filters });
   return response.data;
 };
+
+export const sendInsightsEmail = async (
+  filters: AnalyticsFilters = {},
+): Promise<{ sent_count: number; recipients: string[]; detail: string }> => {
+  const response = await apiClient.post<{ sent_count: number; recipients: string[]; detail: string }>(
+    '/dashboard/insights/send-email/',
+    {},
+    { params: filters },
+  );
+  return response.data;
+};
+
+export const sendCustomerPromotion = async (
+  payload: PromotionPreset,
+): Promise<{ sent_count: number; recipients: string[]; detail: string }> => {
+  const response = await apiClient.post<{ sent_count: number; recipients: string[]; detail: string }>(
+    '/dashboard/insights/send-promotion/',
+    payload,
+  );
+  return response.data;
+};
+
 
