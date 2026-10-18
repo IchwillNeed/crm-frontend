@@ -3,6 +3,7 @@ import { useState } from 'react';
 import axios from 'axios';
 import { PeriodFilters } from '@/components/dashboard/PeriodFilters';
 import { AnalyticsDetails } from '@/components/dashboard/AnalyticsDetails';
+import { InsightsSection } from '@/components/dashboard/InsightsSection';
 import type { AnalyticsFilters } from '@/types/analytics-filters';
 import { Button } from '@/components/ui/button';
 import { useQuery } from '@tanstack/react-query';
@@ -11,7 +12,13 @@ import {
 } from 'recharts';
 import { TrendingUp, TrendingDown, DollarSign, Receipt, Wallet, Users } from 'lucide-react';
 import { getDashboardOverview } from '@/api/endpoints/dashboard';
-import { getSalesAnalytics, getCustomerAnalytics, getProductAnalytics, getExpenseAnalytics } from '@/api/endpoints/analytics';
+import {
+  getSalesAnalytics,
+  getCustomerAnalytics,
+  getProductAnalytics,
+  getExpenseAnalytics,
+  getDashboardInsights,
+} from '@/api/endpoints/analytics';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -87,6 +94,7 @@ function DashboardContent({ filters }: { filters: AnalyticsFilters }) {
 
   const products = useQuery({ queryKey: ['product-analytics', filters], queryFn: () => getProductAnalytics(filters) });
   const expenses = useQuery({ queryKey: ['expense-analytics', filters], queryFn: () => getExpenseAnalytics(filters) });
+  const insights = useQuery({ queryKey: ['dashboard-insights', filters], queryFn: () => getDashboardInsights(filters) });
   if (overviewError) {
     return <div className="space-y-4">
       <p role="alert">{axios.isAxiosError(overviewError) && overviewError.response?.status === 403
@@ -144,6 +152,8 @@ function DashboardContent({ filters }: { filters: AnalyticsFilters }) {
           icon={Users}
         />
       </div>
+
+      <InsightsSection insights={insights.data} loading={insights.isLoading} />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Card>

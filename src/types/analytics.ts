@@ -51,3 +51,38 @@ export interface ExpenseAnalytics {
   evolution: { date: string; expenses: number }[];
   income_vs_expenses: { total_sales: number; total_expenses: number; estimated_result: number };
 }
+
+export interface FrequentPair {
+  product_a_id: number;
+  product_a_name: string;
+  product_b_id: number;
+  product_b_name: string;
+  times_bought_together: number;
+}
+
+export interface RestockSuggestion {
+  product_id: number;
+  name: string;
+  current_stock: number;
+  quantity_sold_period: number;
+  days_of_stock_left: number | null;
+  suggested_restock: number;
+}
+
+export interface InsightItem {
+  id: string;
+  type: 'info' | 'warning' | 'success';
+  category: 'inventory' | 'sales' | 'margin' | 'customers' | 'finance';
+  title: string;
+  description: string;
+  action_label?: string;
+  action_path?: string;
+}
+
+export interface DashboardInsights {
+  enabled: boolean;
+  period: { start: string; end: string };
+  frequent_pairs: FrequentPair[];
+  restock_suggestions: RestockSuggestion[];
+  insights: InsightItem[];
+}

@@ -1,6 +1,12 @@
 import { apiClient } from '../client';
 import type { AnalyticsFilters } from '@/types/analytics-filters';
-import type { SalesAnalytics, CustomerAnalytics, ProductAnalytics, ExpenseAnalytics } from '@/types/analytics';
+import type {
+  SalesAnalytics,
+  CustomerAnalytics,
+  ProductAnalytics,
+  ExpenseAnalytics,
+  DashboardInsights,
+} from '@/types/analytics';
 
 export const getSalesAnalytics = async (filters: AnalyticsFilters = {}): Promise<SalesAnalytics> => {
   const response = await apiClient.get<SalesAnalytics>('/dashboard/sales/', { params: filters });
@@ -21,3 +27,9 @@ export const getExpenseAnalytics = async (filters: AnalyticsFilters = {}): Promi
   const response = await apiClient.get<ExpenseAnalytics>('/dashboard/expenses/', { params: filters });
   return response.data;
 };
+
+export const getDashboardInsights = async (filters: AnalyticsFilters = {}): Promise<DashboardInsights> => {
+  const response = await apiClient.get<DashboardInsights>('/dashboard/insights/', { params: filters });
+  return response.data;
+};
+
