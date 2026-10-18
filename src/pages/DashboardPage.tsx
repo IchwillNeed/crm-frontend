@@ -10,7 +10,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { TrendingUp, TrendingDown, DollarSign, Receipt, Wallet, Users } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Receipt, Wallet, Users, Printer } from 'lucide-react';
 import { getDashboardOverview } from '@/api/endpoints/dashboard';
 import {
   getSalesAnalytics,
@@ -69,7 +69,13 @@ function KpiCard({ title, value, trend, percentageChange, icon: Icon, lowerIsBet
 export function DashboardPage() {
   const [filters, setFilters] = useState<AnalyticsFilters>({ period: 'month' });
   return <div className="space-y-6">
-    <h1 className="text-2xl font-bold">Dashboard</h1>
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <h1 className="text-2xl font-bold">Dashboard</h1>
+      <Button variant="outline" size="sm" className="print:hidden" onClick={() => window.print()}>
+        <Printer className="mr-2 h-4 w-4" />
+        Imprimir / Guardar PDF
+      </Button>
+    </div>
     <PeriodFilters onApply={setFilters} />
     <DashboardContent filters={filters} />
   </div>;

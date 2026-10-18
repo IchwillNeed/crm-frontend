@@ -1,12 +1,30 @@
 import { useCompanyFormatting } from '@/lib/company-formatting';
+import { exportCsv } from '@/lib/export-csv';
 import type { CustomerAnalytics, ExpenseAnalytics, ProductAnalytics, SalesAnalytics } from '@/types/analytics';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Download } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
 
 function SummaryTable({ title, columns, rows }: { title: string; columns: string[]; rows: (string | number)[][] }) {
-  return <Card><CardHeader><CardTitle>{title}</CardTitle></CardHeader><CardContent className="overflow-x-auto">
+  const filename = `${title.toLowerCase().replace(/[^a-z0-9]+/gi, '_')}.csv`;
+  return <Card><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+    <CardTitle>{title}</CardTitle>
+    {rows.length > 0 && (
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="h-7 px-2 text-xs print:hidden"
+        onClick={() => exportCsv(filename, columns, rows)}
+      >
+        <Download className="mr-1 h-3.5 w-3.5" />
+        CSV
+      </Button>
+    )}
+  </CardHeader><CardContent className="overflow-x-auto">
     {rows.length === 0 ? <p className="text-sm text-muted-foreground">Sin registros para mostrar.</p> :
       <table className="w-full text-sm"><thead><tr>{columns.map(c => <th key={c} className="p-2 text-left font-medium">{c}</th>)}</tr></thead>
         <tbody>{rows.map((row, i) => <tr key={i} className="border-t">{row.map((cell, j) => <td key={j} className="p-2">{cell}</td>)}</tr>)}</tbody></table>}

@@ -33,6 +33,7 @@ export function RestockDialog({ open, onOpenChange, product }: RestockDialogProp
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
+      queryClient.invalidateQueries({ queryKey: ['inventory-movements'] });
       setQuantity('');
       setUnitCost('');
       onOpenChange(false);

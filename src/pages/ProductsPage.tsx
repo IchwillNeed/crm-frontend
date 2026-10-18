@@ -4,7 +4,7 @@ import { useCompanyFormatting } from '@/lib/company-formatting';
 import { Can } from '@/components/shared/Can';
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Pencil, Trash2, PackagePlus } from 'lucide-react';
+import { Plus, Pencil, Trash2, PackagePlus, SlidersHorizontal, History } from 'lucide-react';
 import { deleteProduct } from '@/api/endpoints/catalog';
 import type { Product } from '@/types/catalog';
 import { Button } from '@/components/ui/button';
@@ -30,6 +30,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { ProductFormDialog } from '@/components/products/ProductFormDialog';
 import { RestockDialog } from '@/components/products/RestockDialog';
+import { AdjustStockDialog } from '@/components/products/AdjustStockDialog';
+import { InventoryMovementsDialog } from '@/components/products/InventoryMovementsDialog';
 
 
 const LOW_STOCK_THRESHOLD = 5;
@@ -40,6 +42,9 @@ export function ProductsPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [deletingProduct, setDeletingProduct] = useState<Product | null>(null);
   const [restockingProduct, setRestockingProduct] = useState<Product | null>(null);
+  const [adjustingProduct, setAdjustingProduct] = useState<Product | null>(null);
+  const [kardexProduct, setKardexProduct] = useState<Product | null>(null);
+  const [kardexOpen, setKardexOpen] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -55,20 +60,32 @@ export function ProductsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Productos</h1>
-          <p className="text-muted-foreground">Gestiona tu catálogo de productos</p>
+          <p className="text-muted-foreground">Gestiona tu catálogo de productos y movimientos de inventario</p>
         </div>
-        <Can permission="catalog.write"><Button
-          onClick={() => {
-            setEditingProduct(null);
-            setDialogOpen(true);
-          }}
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Nuevo producto
-        </Button></Can>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => {
+              setKardexProduct(null);
+              setKardexOpen(true);
+            }}
+          >
+            <History className="mr-2 h-4 w-4" />
+            Historial Kardex
+          </Button>
+          <Can permission="catalog.write"><Button
+            onClick={() => {
+              setEditingProduct(null);
+              setDialogOpen(true);
+            }}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Nuevo producto
+          </Button></Can>
+        </div>
       </div>
 
       <div className="rounded-md border bg-background">
@@ -114,6 +131,18 @@ export function ProductsPage() {
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
+                    <Button
+                      aria-label="Ver Kardex"
+                      variant="ghost"
+                      size="icon"
+                      title="Ver Kardex del producto"
+                      onClick={() => {
+                        setKardexProduct(product);
+                        setKardexOpen(true);
+                      }}
+                    >
+                      <History className="h-4 w-4" />
+                    </Button>
                     <Can permission="catalog.write"><Button aria-label="Reabastecer"
                       variant="ghost"
                       size="icon"
@@ -121,6 +150,14 @@ export function ProductsPage() {
                       onClick={() => setRestockingProduct(product)}
                     >
                       <PackagePlus className="h-4 w-4" />
+                    </Button></Can>
+                    <Can permission="catalog.write"><Button aria-label="Ajustar stock"
+                      variant="ghost"
+                      size="icon"
+                      title="Ajustar stock / Registrar merma"
+                      onClick={() => setAdjustingProduct(product)}
+                    >
+                      <SlidersHorizontal className="h-4 w-4" />
                     </Button></Can>
                     <Can permission="catalog.write"><Button aria-label="Editar"
                       variant="ghost"
@@ -149,6 +186,18 @@ export function ProductsPage() {
         open={!!restockingProduct}
         onOpenChange={() => setRestockingProduct(null)}
         product={restockingProduct}
+      />
+
+      <AdjustStockDialog
+        open={!!adjustingProduct}
+        onOpenChange={() => setAdjustingProduct(null)}
+        product={adjustingProduct}
+      />
+
+      <InventoryMovementsDialog
+        open={kardexOpen}
+        onOpenChange={setKardexOpen}
+        product={kardexProduct}
       />
 
       <AlertDialog open={!!deletingProduct} onOpenChange={() => setDeletingProduct(null)}>

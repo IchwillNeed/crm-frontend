@@ -1,5 +1,12 @@
 import { apiClient } from '../client';
-import type { Category, Subcategory, ProductType, Product } from '@/types/catalog';
+import type {
+  Category,
+  Subcategory,
+  ProductType,
+  Product,
+  InventoryMovement,
+  StockAdjustmentType,
+} from '@/types/catalog';
 
 // Categories
 export const getCategories = async (): Promise<Category[]> => {
@@ -54,6 +61,23 @@ export const restockProduct = async (
   const response = await apiClient.post<Product>(`/products/${id}/restock/`, data);
   return response.data;
 };
+export const adjustProductStock = async (
+  id: number,
+  data: { movement_type: StockAdjustmentType; quantity: number; notes?: string }
+): Promise<Product> => {
+  const response = await apiClient.post<Product>(`/products/${id}/adjust_stock/`, data);
+  return response.data;
+};
+export const getInventoryMovements = async (params?: {
+  product?: number;
+  movement_type?: string;
+}): Promise<InventoryMovement[]> => {
+  const response = await apiClient.get<InventoryMovement[] | { results: InventoryMovement[] }>(
+    '/inventory-movements/',
+    { params }
+  );
+  return Array.isArray(response.data) ? response.data : response.data.results;
+};
 
 // Category - update/delete
 export const updateCategory = async (id: number, data: { name: string; description?: string }): Promise<Category> => {
@@ -85,4 +109,4 @@ export const deleteProductType = async (id: number): Promise<void> => {
 export const getRoles = async (): Promise<{ id: number; name: string }[]> => {
   const response = await apiClient.get('/roles/');
   return response.data;
-};
+};
