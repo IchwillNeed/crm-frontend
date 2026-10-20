@@ -5,11 +5,12 @@ export interface SaleItem {
   quantity: number;
   returned_quantity?: number;
   unit_price: string;
-  unit_cost: string | null;
+  unit_cost?: string | null;
   subtotal: string;
 }
 
 export interface SaleReturn {
+  restock_confirmed: boolean;
   id: number;
   sale: number;
   sale_item: number;

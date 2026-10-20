@@ -10,7 +10,7 @@ export function useCompanyFormatting() {
   const locale = data?.settings?.language ?? 'es';
   return {
     currency, timeZone,
-    formatCurrency: (value: number | string | null) => value === null ? '—' : new Intl.NumberFormat(locale, { style: 'currency', currency }).format(Number(value)),
+    formatCurrency: (value: number | string | null | undefined) => value == null ? '—' : new Intl.NumberFormat(locale, { style: 'currency', currency }).format(Number(value)),
     formatDate: (value: string) => new Intl.DateTimeFormat(locale, { dateStyle: 'medium', ...(value.length === 10 ? {} : { timeZone, timeStyle: 'short' as const }) }).format(new Date(value.length === 10 ? `${value}T12:00:00` : value)),
   };
 }

@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useCompanyFormatting } from '@/lib/company-formatting';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { usePermissions } from '@/lib/permissions';
 import { Can } from '@/components/shared/Can';
 import { getSale, getPaymentMethods, updateSaleStatus, partialReturnSale } from '@/api/endpoints/sales';
 import { ArrowLeft, RotateCcw } from 'lucide-react';
@@ -28,6 +29,8 @@ import {
 } from '@/components/ui/table';
 
 export function SaleDetailPage() {
+  const { can } = usePermissions();
+  const showCosts = can('costs.read');
   const { formatCurrency, formatDate } = useCompanyFormatting();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -37,6 +40,7 @@ export function SaleDetailPage() {
   const [returningItem, setReturningItem] = useState<SaleItem | null>(null);
   const [returnQty, setReturnQty] = useState('1');
   const [returnReason, setReturnReason] = useState('');
+  const [restockConfirmed, setRestockConfirmed] = useState(false);
 
   const statusMutation = useMutation({
     mutationFn: (status: 'Completed' | 'Cancelled') => updateSaleStatus(saleId, status),
@@ -49,7 +53,7 @@ export function SaleDetailPage() {
   });
 
   const returnMutation = useMutation({
-    mutationFn: (payload: { sale_item: number; quantity: number; reason?: string }) =>
+    mutationFn: (payload: { sale_item: number; quantity: number; reason?: string; restock_confirmed: boolean }) =>
       partialReturnSale(saleId, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['sale', saleId] });
@@ -90,13 +94,15 @@ export function SaleDetailPage() {
     setReturningItem(item);
     setReturnQty('1');
     setReturnReason('');
+    setRestockConfirmed(false);
   };
 
   const handleReturnSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (!returningItem) return;
+    if (!returningItem || !restockConfirmed) return;
     returnMutation.mutate({
       sale_item: returningItem.id,
+      restock_confirmed: restockConfirmed,
       quantity: Number(returnQty),
       reason: returnReason.trim() || undefined,
     });
@@ -169,7 +175,7 @@ export function SaleDetailPage() {
                   <TableHead>Producto</TableHead>
                   <TableHead>Cantidad</TableHead>
                   <TableHead>Precio unit.</TableHead>
-                  <TableHead>Costo unit.</TableHead>
+                  {showCosts && <TableHead className="print:hidden">Costo unit.</TableHead>}
                   <TableHead className="text-right">Subtotal</TableHead>
                   {sale.status === 'Completed' && (
                     <Can permission="sales.update">
@@ -198,9 +204,9 @@ export function SaleDetailPage() {
                         )}
                       </TableCell>
                       <TableCell>{formatCurrency(item.unit_price)}</TableCell>
-                      <TableCell>
-                        {item.unit_cost !== null ? formatCurrency(item.unit_cost) : 'N/D'}
-                      </TableCell>
+                      {showCosts && <TableCell className="print:hidden">
+                        {item.unit_cost != null ? formatCurrency(item.unit_cost) : 'N/D'}
+                      </TableCell>}
                       <TableCell className="text-right">{formatCurrency(item.subtotal)}</TableCell>
                       {sale.status === 'Completed' && (
                         <Can permission="sales.update">
@@ -314,16 +320,20 @@ export function SaleDetailPage() {
               <Label htmlFor="return-reason">Motivo (opcional)</Label>
               <Input
                 id="return-reason"
-                placeholder="Ej. Producto defectuoso, cambio de opinión..."
+                placeholder="Ej. Cambio de opinión; producto en buen estado"
                 value={returnReason}
                 onChange={(e) => setReturnReason(e.target.value)}
               />
             </div>
+            <label className="flex items-start gap-2 text-sm">
+              <input type="checkbox" checked={restockConfirmed} onChange={e => setRestockConfirmed(e.target.checked)} required />
+              Confirmo que todas las unidades están aptas para volver a vender. Este flujo no admite productos dañados.
+            </label>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setReturningItem(null)}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={returnMutation.isPending}>
+              <Button type="submit" disabled={returnMutation.isPending || !restockConfirmed}>
                 {returnMutation.isPending ? 'Procesando...' : 'Confirmar devolución'}
               </Button>
             </DialogFooter>

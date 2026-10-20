@@ -1,6 +1,7 @@
 export type SubscriptionStatus = 'active' | 'trial' | 'cancelled' | 'expired';
 
 export interface SubscriptionSummary {
+  access: SubscriptionAccess;
   subscription: {
     id: number;
     status: SubscriptionStatus;
@@ -17,5 +18,12 @@ export interface SubscriptionSummary {
   } | null;
   limits: { users: number | null; products: number | null };
   usage: { users: number; products: number };
+}
+
+export interface SubscriptionAccess {
+  can_write: boolean;
+  state: 'active' | 'grace' | 'read_only' | 'unassigned';
+  grace_until: string | null;
+  reason: string;
 }
 

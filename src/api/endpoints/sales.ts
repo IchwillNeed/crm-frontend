@@ -33,6 +33,6 @@ export const getCustomerSales = async (id: number): Promise<Sale[]> => (await ap
 export const updateSaleStatus = async (id: number, status: 'Completed' | 'Cancelled'): Promise<Sale> => (await apiClient.patch<Sale>(`/sales/${id}/`, { status })).data;
 export const partialReturnSale = async (
   id: number,
-  data: { sale_item: number; quantity: number; reason?: string }
+  data: { sale_item: number; quantity: number; reason?: string; restock_confirmed: boolean }
 ): Promise<Sale> => (await apiClient.post<Sale>(`/sales/${id}/partial_return/`, data)).data;
 

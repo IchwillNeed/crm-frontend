@@ -4,8 +4,8 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Plus, Trash2, ArrowLeft } from 'lucide-react';
-import { getCustomers } from '@/api/endpoints/customers';
-import { getProducts } from '@/api/endpoints/catalog';
+import type { Customer } from '@/types/customer';
+import type { Product } from '@/types/catalog';
 import { getPaymentMethods, createSale, } from '@/api/endpoints/sales';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -14,9 +14,7 @@ import { Label } from '@/components/ui/label';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
-import {
-   SearchableSelect, type SearchableSelectOption 
-} from '@/components/shared/SearchableSelect';
+import { RemoteSelect } from '@/components/shared/RemoteSelect';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -33,37 +31,23 @@ export function NewSalePage() {
   const { formatCurrency } = useCompanyFormatting();
   const navigate = useNavigate();
 
-  const [customerId, setCustomerId] = useState<string>('');
+  const [customer, setCustomer] = useState<Customer | null>(null);
   const [paymentMethodId, setPaymentMethodId] = useState<string>('');
   const [notes, setNotes] = useState('');
 
-  const [selectedProductId, setSelectedProductId] = useState<string>('');
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [quantity, setQuantity] = useState('1');
   const [cart, setCart] = useState<CartLine[]>([]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  const { data: customers } = useQuery({ queryKey: ['customers'], queryFn: getCustomers });
-  const { data: products } = useQuery({ queryKey: ['products'], queryFn: getProducts });
   const { data: paymentMethods } = useQuery({ queryKey: ['payment-methods'], queryFn: getPaymentMethods });
 
   const total = cart.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
   
-  const productOptions: SearchableSelectOption[] = (products ?? []).filter(p => p.is_active && p.stock > 0).map((p) => ({
-    value: p.id.toString(),
-    label: `${p.name} — ${formatCurrency(Number(p.price))} (stock: ${p.stock})`,
-  }));
-
-  const customerOptions: SearchableSelectOption[] = (customers ?? []).filter(c => c.is_active).map((c) => ({
-    value: c.id.toString(),
-    label: `${c.first_name} ${c.last_name}`,
-  }));
-
-  
   const handleAddToCart = () => {
-    if (!selectedProductId) return;
-    const product = products?.find((p) => p.id === Number(selectedProductId));
+    const product = selectedProduct;
     if (!product) return;
 
     const qty = Number(quantity);
@@ -90,7 +74,7 @@ export function NewSalePage() {
       ];
     });
 
-    setSelectedProductId('');
+    setSelectedProduct(null);
     setQuantity('1');
   };
 
@@ -113,7 +97,7 @@ export function NewSalePage() {
     try {
       const sale = await saleMutation.mutateAsync({
         items: cart.map(line => ({ product: line.productId, quantity: line.quantity, unit_price: line.unitPrice })),
-        customer: customerId ? Number(customerId) : null,
+        customer: customer?.id ?? null,
         payment_method: paymentMethodId ? Number(paymentMethodId) : null,
         notes,
       });
@@ -147,12 +131,12 @@ export function NewSalePage() {
             <div className="flex items-end gap-3">
               <div className="flex-1 space-y-2">
                 <Label>Producto</Label>
-                <SearchableSelect
-                  options={productOptions}
-                  value={selectedProductId}
-                  onChange={setSelectedProductId}
+                <RemoteSelect<Product>
+                  path="/products/" params={{ active_only: 'true', in_stock: 'true' }}
+                  label={p => `${p.name} — ${formatCurrency(Number(p.price))} (stock: ${p.stock})`}
+                  value={selectedProduct}
+                  onChange={setSelectedProduct}
                   placeholder="Buscar producto..."
-                  emptyText="No se encontraron productos."
                 />
               </div>
               <div className="w-24 space-y-2">
@@ -218,12 +202,12 @@ export function NewSalePage() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label>Cliente (opcional)</Label>
-              <SearchableSelect
-                options={customerOptions}
-                value={customerId}
-                onChange={setCustomerId}
+              <RemoteSelect<Customer>
+                path="/customers/" params={{ active_only: 'true' }}
+                label={c => `${c.first_name} ${c.last_name}`}
+                value={customer}
+                onChange={setCustomer}
                 placeholder="Buscar cliente..."
-                emptyText="No se encontraron clientes."
               />
             </div>
 

@@ -27,7 +27,7 @@ export interface Product {
   name: string;
   description: string | null;
   price: string;
-  cost: string | null;
+  cost?: string | null;
   stock: number;
   min_stock: number;
   image: string | null;
@@ -39,6 +39,9 @@ export interface Product {
 export type StockAdjustmentType = 'adjustment_in' | 'adjustment_out' | 'damage' | 'loss';
 
 export type InventoryMovementType =
+  | 'purchase_cancel'
+  | 'sale_cancel'
+  | 'sale_reactivate'
   | 'sale'
   | 'purchase'
   | 'restock'
@@ -61,4 +64,4 @@ export interface InventoryMovement {
   reference: string | null;
   notes: string | null;
   created_at: string;
-}
+}

@@ -1,3 +1,4 @@
+import { CampaignHistory } from './CampaignHistory';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
@@ -13,7 +14,7 @@ import {
   Send,
 } from 'lucide-react';
 import { sendInsightsEmail } from '@/api/endpoints/analytics';
-import type { DashboardInsights, PromotionPreset } from '@/types/analytics';
+import type { DashboardInsights, PromotionPreset, CommercialRecommendation } from '@/types/analytics';
 import type { AnalyticsFilters } from '@/types/analytics-filters';
 import { errorMessage } from '@/lib/errors';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -54,9 +55,11 @@ export function InsightsSection({ insights, loading, filters = {} }: InsightsSec
     return null;
   }
 
+  const recommendations = insights.recommendations ?? [];
   const hasContent =
     insights.insights.length > 0 ||
     insights.frequent_pairs.length > 0 ||
+    recommendations.length > 0 ||
     insights.restock_suggestions.length > 0;
 
   function openPromotion(preset: PromotionPreset) {
@@ -64,16 +67,39 @@ export function InsightsSection({ insights, loading, filters = {} }: InsightsSec
     setPromoOpen(true);
   }
 
+  function openRecommendationCampaign(rec: CommercialRecommendation) {
+    openPromotion({
+      audience: 'bought_a_not_b',
+      product_a_id: rec.product_a_id,
+      product_a_name: rec.product_a_name,
+      product_b_id: rec.product_b_id,
+      product_b_name: rec.product_b_name,
+      supporting_sales_count: rec.supporting_sales_count,
+      supporting_customers_count: rec.supporting_customers_count,
+      period: rec.period,
+      subject: rec.suggested_subject,
+      message: rec.suggested_message,
+      product_ids: [rec.product_a_id, rec.product_b_id],
+    });
+  }
+
+  const periodLabel = `${insights.period.start.slice(0, 10)} a ${insights.period.end.slice(0, 10)}`;
+  const minEvidence = insights.min_evidence_required ?? 2;
+
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader className="flex flex-wrap items-center justify-between gap-3 space-y-0 pb-3">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-amber-500" />
-            <CardTitle className="text-lg">Inteligencia, Sugerencias y Promociones</CardTitle>
-            <Badge variant="secondary">Fase 6 — Intelligence</Badge>
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <Sparkles className="h-5 w-5 text-amber-500" />
+              <CardTitle className="text-lg">Inteligencia, Sugerencias y Recomendaciones Comerciales</CardTitle>
+              <Badge variant="secondary">Período: {periodLabel}</Badge>
+              <Badge variant="outline">Mín. {minEvidence} ventas y clientes distintos de respaldo</Badge>
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-2 print:hidden">
+            <CampaignHistory />
             <Button
               type="button"
               variant="outline"
@@ -86,22 +112,6 @@ export function InsightsSection({ insights, loading, filters = {} }: InsightsSec
             >
               <Mail className="mr-1.5 h-3.5 w-3.5" />
               {summaryEmailMutation.isPending ? 'Enviando...' : 'Enviar resumen a mi correo'}
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              onClick={() =>
-                openPromotion({
-                  audience: 'all',
-                  subject: '¡Promociones y novedades especiales para ti!',
-                  message:
-                    'Te compartimos nuestras ofertas y combos destacados de la semana. ¡Contáctanos para hacer tu pedido!',
-                  product_ids: [],
-                })
-              }
-            >
-              <Send className="mr-1.5 h-3.5 w-3.5" />
-              Enviar promoción a clientes
             </Button>
           </div>
         </CardHeader>
@@ -121,7 +131,7 @@ export function InsightsSection({ insights, loading, filters = {} }: InsightsSec
 
           {!hasContent ? (
             <p className="text-sm text-muted-foreground">
-              Registra más ventas y movimientos en este período para desbloquear patrones de compra y sugerencias inteligentes.
+              No hay suficiente evidencia en el período ({periodLabel}, mínimo {minEvidence} ventas conjuntas netas y clientes distintos) para sugerir recomendaciones firmes.
             </p>
           ) : (
             <>
@@ -162,7 +172,7 @@ export function InsightsSection({ insights, loading, filters = {} }: InsightsSec
                               onClick={() => openPromotion(item.promotion_preset!)}
                             >
                               <Send className="mr-1.5 h-3.5 w-3.5" />
-                              Promocionar por email
+                              Revisar audiencia y campaña
                             </Button>
                           )}
                           {item.action_label && item.action_path && (
@@ -181,19 +191,78 @@ export function InsightsSection({ insights, loading, filters = {} }: InsightsSec
               )}
 
               <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                {recommendations.length > 0 && (
+                  <div className="space-y-2 lg:col-span-2">
+                    <div className="flex items-center justify-between gap-2 text-sm font-medium">
+                      <div className="flex items-center gap-2">
+                        <Repeat className="h-4 w-4 text-muted-foreground" />
+                        <span>Recomendaciones comerciales (&ldquo;Compró A, no compró B&rdquo;)</span>
+                      </div>
+                      <span className="text-xs text-muted-foreground">
+                        Período: {periodLabel}
+                      </span>
+                    </div>
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Quienes compraron (A)</TableHead>
+                            <TableHead>Recomendar (B)</TableHead>
+                            <TableHead className="text-right">Respaldo en el período</TableHead>
+                            <TableHead className="text-right">Audiencia elegible</TableHead>
+                            <TableHead className="text-right print:hidden">Acción</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {recommendations.map((rec) => (
+                            <TableRow key={`${rec.product_a_id}->${rec.product_b_id}`}>
+                              <TableCell className="text-sm font-medium">{rec.product_a_name}</TableCell>
+                              <TableCell className="text-sm">
+                                <span className="font-medium">{rec.product_b_name}</span>
+                                <span className="ml-1.5 text-xs text-muted-foreground">
+                                  (Stock: {rec.product_b_stock})
+                                </span>
+                              </TableCell>
+                              <TableCell className="text-right text-xs">
+                                <span className="font-semibold">{rec.supporting_sales_count}</span> venta(s) ·{' '}
+                                <span className="font-semibold">{rec.supporting_customers_count}</span> cliente(s) distintos
+                              </TableCell>
+                              <TableCell className="text-right text-xs font-semibold">
+                                {rec.eligible_recipients_count} destinatario(s)
+                              </TableCell>
+                              <TableCell className="text-right print:hidden">
+                                <Button
+                                  type="button"
+                                  variant="secondary"
+                                  size="sm"
+                                  className="h-7 text-xs"
+                                  onClick={() => openRecommendationCampaign(rec)}
+                                >
+                                  <Send className="mr-1 h-3 w-3" />
+                                  Revisar y enviar
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                )}
+
                 {insights.frequent_pairs.length > 0 && (
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-sm font-medium">
                       <Repeat className="h-4 w-4 text-muted-foreground" />
-                      <span>Patrones de compra (Comprados juntos)</span>
+                      <span>Pares comprados juntos ({periodLabel})</span>
                     </div>
                     <div className="rounded-md border">
                       <Table>
                         <TableHeader>
                           <TableRow>
                             <TableHead>Combinación de productos</TableHead>
-                            <TableHead className="text-right">Veces juntos</TableHead>
-                            <TableHead className="text-right print:hidden">Acción</TableHead>
+                            <TableHead className="text-right">Evidencia</TableHead>
+                            <TableHead className="text-right print:hidden">Campaña</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -204,8 +273,15 @@ export function InsightsSection({ insights, loading, filters = {} }: InsightsSec
                                 <span className="mx-1.5 text-muted-foreground">+</span>
                                 <span className="font-medium">{pair.product_b_name}</span>
                               </TableCell>
-                              <TableCell className="text-right font-semibold">
-                                {pair.times_bought_together}
+                              <TableCell className="text-right text-xs">
+                                <span className="font-semibold">
+                                  {pair.supporting_sales_count ?? pair.times_bought_together}
+                                </span>{' '}
+                                venta(s) ·{' '}
+                                <span className="font-semibold">
+                                  {pair.supporting_customers_count ?? 0}
+                                </span>{' '}
+                                cliente(s) distintos
                               </TableCell>
                               <TableCell className="text-right print:hidden">
                                 <Button
@@ -215,15 +291,23 @@ export function InsightsSection({ insights, loading, filters = {} }: InsightsSec
                                   className="h-7 text-xs"
                                   onClick={() =>
                                     openPromotion({
-                                      audience: 'related_buyers',
-                                      subject: `Promo Combo: ${pair.product_a_name} + ${pair.product_b_name}`,
-                                      message: `Sabemos que te gustan nuestros productos y armamos una promoción especial combinando ${pair.product_a_name} + ${pair.product_b_name}. ¡Escríbenos para aprovecharla!`,
+                                      audience: 'bought_a_not_b',
+                                      product_a_id: pair.product_a_id,
+                                      product_a_name: pair.product_a_name,
+                                      product_b_id: pair.product_b_id,
+                                      product_b_name: pair.product_b_name,
+                                      supporting_sales_count:
+                                        pair.supporting_sales_count ?? pair.times_bought_together,
+                                      supporting_customers_count: pair.supporting_customers_count ?? 0,
+                                      period: pair.period ?? insights.period,
+                                      subject: `Complementa tu ${pair.product_a_name} con ${pair.product_b_name}`,
+                                      message: `Gracias por tu compra de ${pair.product_a_name}. Quienes lo eligieron también aprovecharon ${pair.product_b_name}. ¡Escríbenos si deseas conocer disponibilidad y precio!`,
                                       product_ids: [pair.product_a_id, pair.product_b_id],
                                     })
                                   }
                                 >
                                   <Send className="mr-1 h-3 w-3" />
-                                  Promocionar
+                                  Ofrecer B a compradores de A
                                 </Button>
                               </TableCell>
                             </TableRow>
@@ -246,7 +330,7 @@ export function InsightsSection({ insights, loading, filters = {} }: InsightsSec
                           <TableRow>
                             <TableHead>Producto</TableHead>
                             <TableHead className="text-right">Stock actual</TableHead>
-                            <TableHead className="text-right">Vendidos</TableHead>
+                            <TableHead className="text-right">Vendidos netos</TableHead>
                             <TableHead className="text-right">Sugerido</TableHead>
                           </TableRow>
                         </TableHeader>
@@ -276,6 +360,7 @@ export function InsightsSection({ insights, loading, filters = {} }: InsightsSec
         open={promoOpen}
         onOpenChange={setPromoOpen}
         preset={promoPreset}
+        filters={filters}
         onSent={(detail) => setFeedback({ type: 'success', text: detail })}
       />
     </div>

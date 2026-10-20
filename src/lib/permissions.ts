@@ -1,7 +1,9 @@
 import { useAuth } from './auth-context';
 
-export type Permission = 'dashboard' | 'customers.write' | 'catalog.write' | 'sales.create' | 'sales.update' | 'delete' | 'expenses' | 'settings';
+export type Permission = 'plan.read' | 'costs.read' | 'dashboard' | 'customers.write' | 'catalog.write' | 'sales.create' | 'sales.update' | 'delete' | 'expenses' | 'settings';
 const roles: Record<Permission, string[]> = {
+  'plan.read': ['Administrador', 'Gerente'],
+  'costs.read': ['Administrador', 'Gerente'],
   dashboard: ['Administrador', 'Gerente'],
   'customers.write': ['Administrador', 'Gerente', 'Vendedor'],
   'catalog.write': ['Administrador', 'Gerente'],

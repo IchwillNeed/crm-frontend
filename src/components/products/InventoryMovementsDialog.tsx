@@ -24,6 +24,9 @@ import {
 
 const MOVEMENT_LABELS: Record<InventoryMovementType, string> = {
   sale: 'Venta',
+  purchase_cancel: 'Anulación de compra',
+  sale_cancel: 'Anulación de venta',
+  sale_reactivate: 'Reactivación de venta',
   purchase: 'Compra',
   restock: 'Reposición',
   return: 'Devolución',

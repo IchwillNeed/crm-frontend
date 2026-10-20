@@ -28,7 +28,7 @@ export interface CustomerAnalytics {
 export interface ProductAnalytics {
   period: { start: string; end: string };
   total_products: number;
-  low_stock: { product_id: number; name: string; stock: number }[];
+  low_stock: { product_id: number; name: string; stock: number; min_stock?: number }[];
   low_stock_threshold: number;
   out_of_stock: { product_id: number; name: string; stock: number }[];
   products_by_margin: {
@@ -58,6 +58,27 @@ export interface FrequentPair {
   product_b_id: number;
   product_b_name: string;
   times_bought_together: number;
+  supporting_sales_count?: number;
+  supporting_customers_count?: number;
+  min_evidence_required?: number;
+  period?: { start: string; end: string };
+}
+
+export interface CommercialRecommendation {
+  rule: 'bought_a_not_b';
+  rule_label: string;
+  product_a_id: number;
+  product_a_name: string;
+  product_b_id: number;
+  product_b_name: string;
+  product_b_stock: number;
+  period: { start: string; end: string };
+  supporting_sales_count: number;
+  supporting_customers_count: number;
+  min_evidence_required: number;
+  eligible_recipients_count: number;
+  suggested_subject: string;
+  suggested_message: string;
 }
 
 export interface RestockSuggestion {
@@ -69,13 +90,83 @@ export interface RestockSuggestion {
   suggested_restock: number;
 }
 
-export type PromotionAudience = 'all' | 'inactive' | 'related_buyers';
+export type PromotionAudience = 'bought_a_not_b' | 'all' | 'inactive' | 'related_buyers';
 
 export interface PromotionPreset {
   audience: PromotionAudience;
   subject: string;
   message: string;
   product_ids?: number[];
+  product_a_id?: number;
+  product_a_name?: string;
+  product_b_id?: number;
+  product_b_name?: string;
+  supporting_sales_count?: number;
+  supporting_customers_count?: number;
+  period?: { start: string; end: string };
+}
+
+export interface CampaignRecipientPreview {
+  customer_id: number;
+  name: string;
+  email: string;
+}
+
+export interface CampaignPreview {
+  sender: { from_email: string; signature: string };
+  preview_token: string;
+  selected_customer_ids: number[];
+  selected_count: number;
+  cooldown_days: number;
+  cooldown_excluded_count: number;
+  rule: 'bought_a_not_b';
+  rule_label: string;
+  period: { start: string; end: string };
+  product_a: { id: number; name: string };
+  product_b: { id: number; name: string; stock: number };
+  supporting_sales_count: number;
+  supporting_customers_count: number;
+  min_evidence_required: number;
+  recipient_count: number;
+  recipients: CampaignRecipientPreview[];
+  image?: { name: string; content_type: string; size: number; sha256: string } | null;
+  empty_audience_message: string | null;
+  suggested_subject: string;
+  suggested_message: string;
+}
+
+export interface CampaignRecipientStatus {
+  id: number;
+  customer_id: number;
+  name: string;
+  email: string;
+  status: 'pending' | 'sent' | 'failed' | 'unknown';
+  error_message: string | null;
+  sent_at: string | null;
+}
+
+export interface CampaignExecutionResult {
+  subject: string;
+  message: string;
+  image: CampaignPreview['image'];
+  sender: CampaignPreview['sender'] | null;
+  campaign_id: number;
+  status: 'pending' | 'sent' | 'partial_error' | 'failed' | 'empty';
+  rule: string;
+  rule_label: string;
+  period: { start: string; end: string };
+  product_a: { id: number; name: string };
+  product_b: { id: number; name: string };
+  recipient_count: number;
+  sent_count: number;
+  newly_sent_count: number;
+  already_sent_count: number;
+  failed_count: number;
+  unknown_count: number;
+  retryable_count: number;
+  recipients: string[];
+  recipient_statuses: CampaignRecipientStatus[];
+  detail: string;
 }
 
 export interface InsightItem {
@@ -92,8 +183,9 @@ export interface InsightItem {
 export interface DashboardInsights {
   enabled: boolean;
   period: { start: string; end: string };
+  min_evidence_required?: number;
   frequent_pairs: FrequentPair[];
+  recommendations?: CommercialRecommendation[];
   restock_suggestions: RestockSuggestion[];
   insights: InsightItem[];
 }
-

@@ -8,6 +8,7 @@ export interface Customer {
   city: string | null;
   birth_date: string | null;
   notes: string | null;
+  accepts_marketing?: boolean;
   is_active: boolean;
   created_at: string;
   updated_at: string;

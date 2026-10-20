@@ -64,17 +64,18 @@ export function PlanTab() {
           <CardDescription>
             {plan
               ? `${plan.description ?? ''} · ${plan.price} / ${plan.billing_period === 'monthly' ? 'mes' : plan.billing_period}`
-              : 'Tu empresa no tiene un plan activo, por lo que no hay límites de uso.'}
+              : 'Solo consulta hasta que el administrador de la plataforma asigne un plan.'}
           </CardDescription>
         </CardHeader>
         {subscription && (
           <CardContent className="text-sm text-muted-foreground">
             Desde {new Date(subscription.start_date).toLocaleDateString()}
             {subscription.end_date ? ` hasta ${new Date(subscription.end_date).toLocaleDateString()}` : ''}
-            {!subscription.is_current && ' · Esta suscripción ya no está vigente, no se aplican límites.'}
+            {!subscription.is_current && ' · Esta suscripción no está vigente.'}
           </CardContent>
         )}
       </Card>
+      <p role="status">{data.access.reason} {data.access.grace_until && `Fin de gracia: ${new Date(data.access.grace_until).toLocaleString()}`}</p>
       <Card>
         <CardHeader>
           <CardTitle>Uso del plan</CardTitle>

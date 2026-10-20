@@ -2,11 +2,9 @@ import { usePagedList } from '@/lib/use-paged-list';
 import { exportCsv } from '@/lib/export-csv';
 import { useCompanyFormatting } from '@/lib/company-formatting';
 import { Can } from '@/components/shared/Can';
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Trash2, Eye } from 'lucide-react';
-import { deleteSale } from '@/api/endpoints/sales';
+import { useQuery } from '@tanstack/react-query';
+import { Plus, Eye } from 'lucide-react';
 import { getCustomers } from '@/api/endpoints/customers';
 import type { Sale } from '@/types/sale';
 import { Button } from '@/components/ui/button';
@@ -15,29 +13,16 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+
 
 
 
 export function SalesPage() {
   const { formatCurrency, formatDate } = useCompanyFormatting();
   const navigate = useNavigate();
-  const [deletingSale, setDeletingSale] = useState<Sale | null>(null);
-  const queryClient = useQueryClient();
 
   const { data: sales, isLoading, controls } = usePagedList<Sale>('sales', '/sales/');
   const { data: customers } = useQuery({ queryKey: ['customers'], queryFn: getCustomers });
-
-  const deleteMutation = useMutation({
-    mutationFn: deleteSale,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['sales'] });
-      setDeletingSale(null);
-    },
-  });
 
   const customerName = (id: number | null) => {
     if (!id) return 'Sin cliente';
@@ -99,9 +84,7 @@ export function SalesPage() {
                       <Button aria-label="Ver detalle" variant="ghost" size="icon" onClick={() => navigate(`/sales/${sale.id}`)}>
                         <Eye className="h-4 w-4" />
                       </Button>
-                    <Can permission="delete"><Button aria-label="Eliminar" variant="ghost" size="icon" onClick={() => setDeletingSale(sale)}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button></Can>
+
                   </TableCell>
                 </TableRow>
               ))
@@ -110,22 +93,7 @@ export function SalesPage() {
         </Table>
       </div>
 
-      <AlertDialog open={!!deletingSale} onOpenChange={() => setDeletingSale(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Eliminar venta?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción eliminará la venta y no se puede deshacer.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => deletingSale && deleteMutation.mutate(deletingSale.id)}>
-              Eliminar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+
     </div>
   );
 }

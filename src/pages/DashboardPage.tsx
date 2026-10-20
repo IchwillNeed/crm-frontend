@@ -77,6 +77,10 @@ export function DashboardPage() {
       </Button>
     </div>
     <PeriodFilters onApply={setFilters} />
+    <p className="text-sm text-muted-foreground">
+      Las ventas se muestran netas de devoluciones según la fecha de la venta original.
+      Una devolución posterior puede modificar un período anterior; estos importes no representan un cierre de caja.
+    </p>
     <DashboardContent filters={filters} />
   </div>;
 }

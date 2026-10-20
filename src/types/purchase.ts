@@ -21,6 +21,9 @@ export interface PurchaseItem {
 }
 
 export interface Purchase {
+  cancelled_at: string | null;
+  cancelled_by: number | null;
+  cancellation_reason: string;
   id: number;
   supplier: number | null;
   user: number;

@@ -1,4 +1,7 @@
 import { usePagedList } from '@/lib/use-paged-list';
+import { usePermissions } from '@/lib/permissions';
+import { toast } from 'sonner';
+import { errorMessage } from '@/lib/errors';
 import { exportCsv } from '@/lib/export-csv';
 import { useCompanyFormatting } from '@/lib/company-formatting';
 import { useState } from 'react';
@@ -50,6 +53,7 @@ export function ExpensesPage() {
 }
 
 function ExpensesTab() {
+  const { can } = usePermissions();
   const { formatCurrency, formatDate } = useCompanyFormatting();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Expense | null>(null);
@@ -61,6 +65,7 @@ function ExpensesTab() {
 
   const deleteMutation = useMutation({
     mutationFn: deleteExpense,
+    onError: error => toast.error(errorMessage(error)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
       setDeleting(null);
@@ -113,9 +118,9 @@ function ExpensesTab() {
                     <Button variant="ghost" size="icon" onClick={() => { setEditing(exp); setDialogOpen(true); }}>
                       <Pencil className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={() => setDeleting(exp)}>
+                    {can('delete') && <Button aria-label="Eliminar gasto" variant="ghost" size="icon" onClick={() => setDeleting(exp)}>
                       <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                    </Button>}
                   </TableCell>
                 </TableRow>
               ))
@@ -153,6 +158,7 @@ function ExpenseCategoriesTab() {
   const { data } = useQuery({ queryKey: ['expense-categories'], queryFn: getExpenseCategories });
   const deleteMutation = useMutation({
     mutationFn: deleteExpenseCategory,
+    onError: error => toast.error(errorMessage(error)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expense-categories'] });
       setDeleting(null);

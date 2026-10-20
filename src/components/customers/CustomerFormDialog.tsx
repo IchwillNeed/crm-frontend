@@ -28,6 +28,7 @@ const emptyForm: Partial<CustomerFormData> = {
   address: '',
   city: '',
   notes: '',
+  accepts_marketing: false,
 };
 
 export function CustomerFormDialog(props: CustomerFormDialogProps) {
@@ -35,7 +36,7 @@ export function CustomerFormDialog(props: CustomerFormDialogProps) {
 }
 
 function CustomerFormDialogBody({ open, onOpenChange, customer }: CustomerFormDialogProps) {
-  const [formData, setFormData] = useState<Partial<CustomerFormData>>(customer ? { first_name: customer.first_name, last_name: customer.last_name, email: customer.email ?? '', phone: customer.phone ?? '', address: customer.address ?? '', city: customer.city ?? '', notes: customer.notes ?? '' } : emptyForm);
+  const [formData, setFormData] = useState<Partial<CustomerFormData>>(customer ? { first_name: customer.first_name, last_name: customer.last_name, email: customer.email ?? '', phone: customer.phone ?? '', address: customer.address ?? '', city: customer.city ?? '', notes: customer.notes ?? '', accepts_marketing: customer.accepts_marketing ?? false } : emptyForm);
   const queryClient = useQueryClient();
   const isEditing = !!customer;
 
@@ -145,6 +146,21 @@ function CustomerFormDialogBody({ open, onOpenChange, customer }: CustomerFormDi
               onChange={(e) => handleChange('notes', e.target.value)}
             />
           </div>
+
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              id="accepts_marketing"
+              type="checkbox"
+              checked={Boolean(formData.accepts_marketing)}
+              onChange={(e) => setFormData((prev) => ({ ...prev, accepts_marketing: e.target.checked }))}
+              className="h-4 w-4 rounded border"
+            />
+            <span>Autorización de promociones registrada</span>
+          </label>
+
+          <p className="text-xs text-muted-foreground">
+            Activa esta casilla solo tras obtener autorización. Registra fecha, medio y referencia del respaldo en Notas. La casilla no demuestra cómo se obtuvo.
+          </p>
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

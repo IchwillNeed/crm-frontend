@@ -1,3 +1,5 @@
+import { toast } from 'sonner';
+import { errorMessage } from '@/lib/errors';
 import { usePagedList } from '@/lib/use-paged-list';
 import { Can } from '@/components/shared/Can';
 import { useState } from 'react';
@@ -41,6 +43,7 @@ export function CustomersPage() {
 
   const deleteMutation = useMutation({
     mutationFn: deleteCustomer,
+    onError: (error) => toast.error(errorMessage(error)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       setDeletingCustomer(null);

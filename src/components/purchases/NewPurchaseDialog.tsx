@@ -77,18 +77,11 @@ function NewPurchaseDialogBody({ open, onOpenChange }: NewPurchaseDialogProps) {
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
-    const validItems = lines
-      .filter((l) => l.product && Number(l.quantity) > 0 && l.unit_cost !== '')
-      .map((l) => ({
-        product: Number(l.product),
-        quantity: Number(l.quantity),
-        unit_cost: l.unit_cost,
-      }));
-
-    if (validItems.length === 0) {
-      toast.error('Agrega al menos un producto con cantidad y costo.');
+    if (!lines.length || lines.some(l => !l.product || !Number.isInteger(Number(l.quantity)) || Number(l.quantity) <= 0 || l.unit_cost.trim() === '' || !Number.isFinite(Number(l.unit_cost)) || Number(l.unit_cost) < 0)) {
+      toast.error('Completa o elimina cada línea: producto, cantidad entera positiva y costo válido.');
       return;
     }
+    const validItems = lines.map(l => ({ product: Number(l.product), quantity: Number(l.quantity), unit_cost: l.unit_cost }));
 
     mutation.mutate({
       supplier: supplierId ? Number(supplierId) : null,

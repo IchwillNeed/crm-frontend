@@ -25,6 +25,10 @@ export const createPurchase = async (data: CreatePurchasePayload): Promise<Purch
   return response.data;
 };
 
+export const cancelPurchase = async ({ id, reason }: { id: number; reason: string }): Promise<Purchase> => {
+  return (await apiClient.post<Purchase>(`/purchases/${id}/cancel/`, { reason })).data;
+};
+
 export const deletePurchase = async (id: number): Promise<void> => {
   await apiClient.delete(`/purchases/${id}/`);
 };

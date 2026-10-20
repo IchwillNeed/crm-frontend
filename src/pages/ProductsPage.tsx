@@ -1,6 +1,9 @@
+import { toast } from 'sonner';
+import { errorMessage } from '@/lib/errors';
 import { usePagedList } from '@/lib/use-paged-list';
 import { exportCsv } from '@/lib/export-csv';
 import { useCompanyFormatting } from '@/lib/company-formatting';
+import { usePermissions } from '@/lib/permissions';
 import { Can } from '@/components/shared/Can';
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -37,6 +40,8 @@ import { InventoryMovementsDialog } from '@/components/products/InventoryMovemen
 const LOW_STOCK_THRESHOLD = 5;
 
 export function ProductsPage() {
+  const { can } = usePermissions();
+  const showCosts = can('costs.read');
   const { formatCurrency } = useCompanyFormatting();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -52,6 +57,7 @@ export function ProductsPage() {
 
   const deleteMutation = useMutation({
     mutationFn: deleteProduct,
+    onError: (error) => toast.error(errorMessage(error)),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
       setDeletingProduct(null);
@@ -89,14 +95,14 @@ export function ProductsPage() {
       </div>
 
       <div className="rounded-md border bg-background">
-        <Button className="m-3" variant="outline" disabled={!products?.length} onClick={() => exportCsv("products.csv", ['ID', 'Producto', 'Precio', 'Costo', 'Stock'], products?.map(r => [r.id, r.name, r.price, r.cost, r.stock]) ?? [])}>Exportar página CSV</Button>
+        <Button className="m-3" variant="outline" disabled={!products?.length} onClick={() => exportCsv("products.csv", ['ID', 'Producto', 'Precio', ...(showCosts ? ['Costo'] : []), 'Stock'], products?.map(r => [r.id, r.name, r.price, ...(showCosts ? [r.cost ?? null] : []), r.stock]) ?? [])}>Exportar página CSV</Button>
         {controls}
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Nombre</TableHead>
               <TableHead>Precio</TableHead>
-              <TableHead>Costo</TableHead>
+              {showCosts && <TableHead>Costo</TableHead>}
               <TableHead>Stock</TableHead>
               <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
@@ -105,14 +111,14 @@ export function ProductsPage() {
             {isLoading ? (
               Array.from({ length: 3 }).map((_, i) => (
                 <TableRow key={i}>
-                  <TableCell colSpan={5}>
+                  <TableCell colSpan={showCosts ? 5 : 4}>
                     <Skeleton className="h-6 w-full" />
                   </TableCell>
                 </TableRow>
               ))
             ) : products?.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-muted-foreground">
+                <TableCell colSpan={showCosts ? 5 : 4} className="text-center text-muted-foreground">
                   No hay productos registrados todavía.
                 </TableCell>
               </TableRow>
@@ -121,7 +127,7 @@ export function ProductsPage() {
                 <TableRow key={product.id}>
                   <TableCell className="font-medium">{product.name}</TableCell>
                   <TableCell>{formatCurrency(product.price)}</TableCell>
-                  <TableCell>{formatCurrency(product.cost)}</TableCell>
+                  {showCosts && <TableCell>{formatCurrency(product.cost)}</TableCell>}
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <span>{product.stock}</span>

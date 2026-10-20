@@ -1,8 +1,9 @@
 import { createContext, useContext } from 'react';
 import type { LoginCredentials, SignupData } from '@/api/endpoints/auth';
 import type { CompanyUser } from '@/types/user';
+import type { SubscriptionAccess } from '@/types/subscription';
 
-export interface CurrentUser extends CompanyUser { company: number | null; is_superuser: boolean }
+export interface CurrentUser extends CompanyUser { company: number | null; is_superuser: boolean; access: SubscriptionAccess | null }
 export interface AuthState {
   user: CurrentUser | undefined;
   isAuthenticated: boolean;

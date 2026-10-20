@@ -3,8 +3,15 @@ export interface CompanySettings {
   timezone: string;
   language: string;
   enable_recommendations: boolean;
-  enable_expenses: boolean;
-  enable_inventory: boolean;
+  campaign_cooldown_days: number;
+  smtp_sender_name?: string;
+  smtp_host?: string;
+  smtp_port?: number;
+  smtp_use_tls?: boolean;
+  smtp_user?: string;
+  smtp_password?: string;
+  clear_smtp_password?: boolean;
+  smtp_configured?: boolean;
 }
 
 export interface Company {
