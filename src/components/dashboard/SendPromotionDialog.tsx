@@ -209,6 +209,7 @@ function PromotionForm({
           </div>
 
           <p>Remitente: {preview.sender.from_email}</p>
+          {preview.sender.provider === 'brevo' && <p>Envío mediante Brevo. Respuestas a {preview.sender.reply_to}. Con Gmail, Brevo puede sustituir la dirección visible. Las imágenes se envían como adjuntos PNG, JPG o GIF.</p>}
           <p>Plazo entre promociones del mismo producto: {preview.cooldown_days} día(s).
             {' '}{preview.cooldown_excluded_count} destinatario(s) excluido(s) por contacto reciente o envío en curso.</p>
           <p className="font-semibold">Seleccionados para enviar: {preview.selected_count}</p>

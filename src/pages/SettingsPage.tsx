@@ -82,6 +82,11 @@ function PreferencesTab({ settings }: { settings: CompanySettings }) {
   const [language, setLanguage] = useState(settings?.language ?? 'es');
   const [cooldownDays, setCooldownDays] = useState(settings?.campaign_cooldown_days ?? 7);
   const [enableRecommendations, setEnableRecommendations] = useState(settings?.enable_recommendations ?? true);
+  const [emailProvider, setEmailProvider] = useState<'smtp' | 'brevo'>(settings?.email_provider ?? 'smtp');
+  const [brevoName, setBrevoName] = useState(settings?.brevo_sender_name ?? '');
+  const [brevoEmail, setBrevoEmail] = useState(settings?.brevo_sender_email ?? '');
+  const [brevoKey, setBrevoKey] = useState('');
+  const [clearBrevoKey, setClearBrevoKey] = useState(false);
   const [smtpSenderName, setSmtpSenderName] = useState(settings?.smtp_sender_name ?? '');
   const [smtpUser, setSmtpUser] = useState(settings?.smtp_user ?? '');
   const [smtpPassword, setSmtpPassword] = useState('');
@@ -92,6 +97,8 @@ function PreferencesTab({ settings }: { settings: CompanySettings }) {
     mutationFn: updateMyCompanySettings,
     onSuccess: () => {
       setSmtpPassword('');
+      setBrevoKey('');
+      setClearBrevoKey(false);
       queryClient.invalidateQueries({ queryKey: ['my-company'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       toast.success('Preferencias actualizadas');
@@ -106,6 +113,11 @@ function PreferencesTab({ settings }: { settings: CompanySettings }) {
         language,
         enable_recommendations: enableRecommendations,
         campaign_cooldown_days: cooldownDays,
+        email_provider: emailProvider,
+        brevo_sender_name: brevoName,
+        brevo_sender_email: brevoEmail,
+        clear_brevo_api_key: clearBrevoKey,
+        ...(brevoKey.trim() ? { brevo_api_key: brevoKey } : {}),
         smtp_sender_name: smtpSenderName,
         smtp_user: smtpUser,
         smtp_host: smtpHost || 'smtp.gmail.com',
@@ -131,6 +143,23 @@ function PreferencesTab({ settings }: { settings: CompanySettings }) {
         <span className="text-xs text-muted-foreground">Por cliente y producto recomendado, dentro de esta empresa. Cambiar el mensaje o el producto comprado no evita el plazo.</span>
       </label>
 
+      <label className="block text-sm">Proveedor de correo
+        <select aria-label="Proveedor de correo" className="block w-full rounded border bg-background p-2" value={emailProvider} onChange={e => setEmailProvider(e.target.value as 'smtp' | 'brevo')}>
+          <option value="brevo">Brevo API</option><option value="smtp">SMTP</option>
+        </select>
+      </label>
+      {emailProvider === 'brevo' && <div className="space-y-3 rounded-lg border p-4">
+        <h3 className="text-sm font-semibold">Brevo del negocio</h3>
+        <p className="text-xs">{settings.brevo_configured ? 'Credenciales guardadas; conexión y remitente sin verificar por el CRM.' : 'Pendiente de configurar.'}</p>
+        {!settings.brevo_delivery_enabled && <p className="text-sm">El administrador de la plataforma todavía no habilitó el envío por Brevo.</p>}
+        <label className="block text-sm">Nombre del remitente<Input value={brevoName} onChange={e => setBrevoName(e.target.value)} /></label>
+        <label className="block text-sm">Correo verificado en Brevo<Input type="email" value={brevoEmail} onChange={e => setBrevoEmail(e.target.value)} /></label>
+        <label className="block text-sm">Clave API de Brevo<Input type="password" autoComplete="new-password" value={brevoKey} disabled={clearBrevoKey} onChange={e => setBrevoKey(e.target.value)} placeholder="Deja vacío para conservar la clave guardada" /></label>
+        <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={clearBrevoKey} onChange={e => setClearBrevoKey(e.target.checked)} />Eliminar la clave guardada al guardar</label>
+        <p className="text-xs">La clave se guarda cifrada para esta empresa y nunca se muestra de nuevo. Reemplázala antes de su vencimiento. Las respuestas irán al correo indicado; Brevo puede sustituir la dirección visible si utilizas Gmail u otro dominio gratuito. Las imágenes se enviarán como adjuntos PNG, JPG o GIF, sin guardarse en el CRM.</p>
+        <details className="text-sm"><summary>Cómo configurar Brevo</summary><ol className="list-decimal space-y-2 pl-5 mt-2"><li>Crea tu cuenta en Brevo y verifica el remitente en Configuración &gt; Remitentes.</li><li>En SMTP y API genera una clave API normal, con acceso restringido a Emails transaccionales &gt; Todos.</li><li>Copia el remitente y la clave en este formulario y guarda. No uses una clave SMTP ni MCP.</li><li>Revisa una campaña con un destinatario de prueba autorizado y confirma el envío. Consulta también el historial de Brevo.</li></ol></details>
+      </div>}
+      {emailProvider === 'smtp' && <>
       <div className="space-y-3 rounded-lg border bg-muted/20 p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
@@ -181,6 +210,7 @@ function PreferencesTab({ settings }: { settings: CompanySettings }) {
         <p className="text-xs">TLS obligatorio. Servidores autorizados por el administrador de la plataforma; Gmail y Microsoft 365 incluidos por defecto.</p>
       </div>
 
+      </>}
       {mutation.isError && <p role="alert" className="text-sm text-destructive">No se pudieron guardar las preferencias. Revisa los valores e inténtalo nuevamente.</p>}
       <Button disabled={mutation.isPending}>Guardar preferencias</Button>
     </form>

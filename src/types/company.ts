@@ -4,6 +4,13 @@ export interface CompanySettings {
   language: string;
   enable_recommendations: boolean;
   campaign_cooldown_days: number;
+  email_provider?: 'smtp' | 'brevo';
+  brevo_sender_name?: string;
+  brevo_sender_email?: string;
+  brevo_api_key?: string;
+  clear_brevo_api_key?: boolean;
+  brevo_configured?: boolean;
+  brevo_delivery_enabled?: boolean;
   smtp_sender_name?: string;
   smtp_host?: string;
   smtp_port?: number;

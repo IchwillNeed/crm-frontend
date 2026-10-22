@@ -113,7 +113,7 @@ export interface CampaignRecipientPreview {
 }
 
 export interface CampaignPreview {
-  sender: { from_email: string; signature: string };
+  sender: { from_email: string; signature: string; provider?: 'smtp' | 'brevo'; reply_to?: string; image_delivery?: 'inline' | 'attachment' };
   preview_token: string;
   selected_customer_ids: number[];
   selected_count: number;
