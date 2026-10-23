@@ -25,12 +25,12 @@ const PurchasesPage = lazy(() => import('@/pages/PurchasesPage').then(module => 
 import { queryClient } from '@/lib/query-client';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated, isLoading, error, logout } = useAuth();
+  const { user, isAuthenticated, isLoading, error, logout, retryProfile } = useAuth();
 
   if (isLoading) return <div>Cargando...</div>;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
 
-  if (error) return <div className="p-6 space-y-4"><p role="alert">No se pudo cargar tu cuenta. Revisa tu conexión o vuelve a iniciar sesión.</p><Button onClick={logout}>Volver a iniciar sesión</Button></div>;
+  if (error && !user) return <div className="mx-auto max-w-lg p-6 space-y-4"><p role="alert">No se pudo cargar tu cuenta. Revisa tu conexión y vuelve a intentarlo.</p><div className="flex flex-wrap gap-3"><Button onClick={retryProfile}>Reintentar</Button><Button variant="outline" onClick={logout}>Volver a iniciar sesión</Button></div></div>;
   return <>{children}</>;
 }
 

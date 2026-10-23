@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 
 const edge = 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe';
 const python = process.env.CRM_TEST_PYTHON ?? '../crm_django/venv/Scripts/python.exe';
+const webkit = process.env.CRM_TEST_BROWSER === 'webkit';
 export default defineConfig({
   testDir: './e2e',
   timeout: 120000,
@@ -11,7 +12,8 @@ export default defineConfig({
   use: {
     baseURL: 'http://127.0.0.1:5174',
     headless: true,
-    launchOptions: existsSync(edge) ? { executablePath: edge } : {},
+    browserName: webkit ? 'webkit' : 'chromium',
+    launchOptions: !webkit && existsSync(edge) ? { executablePath: edge } : {},
     screenshot: 'only-on-failure', trace: 'off',
   },
   webServer: [

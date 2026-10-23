@@ -23,9 +23,11 @@ function SelectGroup({
 }
 
 function SelectValue({
+  placeholder,
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Value>) {
-  return <SelectPrimitive.Value data-slot="select-value" {...props} />
+  // Keep React-owned elements around text that browser tools may replace.
+  return <SelectPrimitive.Value data-slot="select-value" placeholder={<span>{placeholder}</span>} {...props} />
 }
 
 function SelectTrigger({
@@ -119,7 +121,7 @@ function SelectItem({
           <CheckIcon className="pointer-events-none" />
         </SelectPrimitive.ItemIndicator>
       </span>
-      <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
+      <SelectPrimitive.ItemText><span>{children}</span></SelectPrimitive.ItemText>
     </SelectPrimitive.Item>
   )
 }

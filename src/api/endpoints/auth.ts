@@ -13,7 +13,7 @@ export interface TokenResponse {
 }
 
 export const login = async (credentials: LoginCredentials): Promise<TokenResponse> => {
-  const response = await axios.post<TokenResponse>(`${API_BASE_URL}/token/`, credentials);
+  const response = await axios.post<TokenResponse>(`${API_BASE_URL}/token/`, credentials, { timeout: 30000 });
   return response.data;
 };
 
@@ -34,6 +34,6 @@ export interface SignupResponse {
 }
 
 export const signup = async (data: SignupData): Promise<SignupResponse> => {
-  const response = await axios.post<SignupResponse>(`${API_BASE_URL}/signup/`, data);
+  const response = await axios.post<SignupResponse>(`${API_BASE_URL}/signup/`, data, { timeout: 30000 });
   return response.data;
 };

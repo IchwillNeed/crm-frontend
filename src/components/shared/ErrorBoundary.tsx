@@ -2,6 +2,7 @@ import { Component, type ErrorInfo, type ReactNode } from 'react';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
+  contained?: boolean;
 }
 
 interface ErrorBoundaryState {
@@ -29,7 +30,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       <div
         role="alert"
         style={{
-          minHeight: '100vh',
+          minHeight: this.props.contained ? '40vh' : '100vh',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
@@ -42,8 +43,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       >
         <h1 style={{ fontSize: '20px', fontWeight: 600, margin: 0 }}>Algo salió mal</h1>
         <p style={{ margin: 0, color: '#6b7280', maxWidth: '420px' }}>
-          Ocurrió un error inesperado. Si tienes activada la traducción automática del navegador,
-          desactívala e intenta de nuevo.
+          No pudimos mostrar esta pantalla. Recarga la página para intentarlo de nuevo.
+          Los datos que aún no guardaste pueden perderse. Si estabas registrando una operación,
+          comprueba si se guardó antes de repetirla.
         </p>
         <button
           type="button"

@@ -12,6 +12,7 @@ export interface AuthState {
   login: (data: LoginCredentials) => Promise<void>;
   signup: (data: SignupData) => Promise<void>;
   logout: () => void;
+  retryProfile: () => void;
 }
 export const AuthContext = createContext<AuthState | undefined>(undefined);
 export function useAuth() {

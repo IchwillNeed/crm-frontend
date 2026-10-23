@@ -19,12 +19,15 @@ export function RemoteSelect<T extends { id: number }>({ path, value, onChange, 
     queryFn: async ({ signal }) => (await apiClient.get<ResultPage<T>>(path, { signal, params: { ...params, search, page, page_size: 25 } })).data });
   const items = query.data?.results ?? [];
   const select = (item: T) => { onChange(item); setOpen(false); setSearch(''); setActive(-1); };
-  return <div className="relative" onBlur={event => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false); }}>
+  return <div className="relative" onBlur={event => {
+    if (!(event.relatedTarget instanceof Node) || !event.currentTarget.contains(event.relatedTarget)) setOpen(false);
+  }}>
     <div className="flex gap-1">
       <Input placeholder={placeholder} aria-label={placeholder} role="combobox" aria-expanded={open}
         aria-controls={`${id}-list`} aria-autocomplete="list" aria-activedescendant={open && active >= 0 ? `${id}-${active}` : undefined}
         value={open ? search : value ? label(value) : ''}
         onFocus={() => { setOpen(true); setSearch(''); setPage(1); setActive(-1); }}
+        onClick={() => { if (!open) { setOpen(true); setSearch(''); setPage(1); setActive(-1); } }}
         onChange={event => { setSearch(event.target.value); setPage(1); setActive(-1); setOpen(true); }}
         onKeyDown={event => {
           if (event.key === 'Escape') setOpen(false);
@@ -34,7 +37,8 @@ export function RemoteSelect<T extends { id: number }>({ path, value, onChange, 
         }} />
       {value && <Button type="button" variant="ghost" aria-label={`Limpiar ${placeholder}`} onClick={() => { onChange(null); setSearch(''); }}>×</Button>}
     </div>
-    {open && <div className="absolute z-50 mt-1 w-full rounded border bg-background p-2 shadow-lg">
+    {open && <div className="absolute z-50 mt-1 w-full rounded border bg-background p-2 shadow-lg"
+      onMouseDown={event => { if (event.button === 0) event.preventDefault(); }}>
       {query.isFetching && <p role="status">Buscando…</p>}
       {query.isError && <p role="alert">No se pudo buscar. <Button type="button" onClick={() => void query.refetch()}>Reintentar</Button></p>}
       <div id={`${id}-list`} role="listbox" aria-label={placeholder} className="max-h-56 overflow-auto">

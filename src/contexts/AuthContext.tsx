@@ -35,5 +35,5 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setHasToken(false);
     }
   };
-  return <AuthContext.Provider value={{ user: profile.data, isAuthenticated: hasToken, isLoading: hasToken && profile.isPending, error: profile.error, login, signup, logout }}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={{ user: profile.data, isAuthenticated: hasToken, isLoading: hasToken && profile.isPending, error: profile.error, retryProfile: () => { void profile.refetch(); }, login, signup, logout }}>{children}</AuthContext.Provider>;
 }

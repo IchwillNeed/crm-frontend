@@ -65,7 +65,7 @@ export function SaleDetailPage() {
     onError: (err) => toast.error(errorMessage(err)),
   });
 
-  const { data: sale, isLoading } = useQuery({
+  const { data: sale, isLoading, error: loadError, refetch } = useQuery({
     queryKey: ['sale', saleId],
     queryFn: () => getSale(saleId),
     enabled: !!saleId,
@@ -118,7 +118,7 @@ export function SaleDetailPage() {
   }
 
   if (!sale) {
-    return <p className="text-destructive">Venta no encontrada.</p>;
+    return <div className="space-y-4"><p role="alert">{loadError ? errorMessage(loadError) : 'Venta no encontrada.'}</p><div className="flex flex-wrap gap-3">{loadError && <Button onClick={() => void refetch()}>Reintentar</Button>}<Button variant="outline" onClick={() => navigate('/sales')}>Volver a ventas</Button></div></div>;
   }
 
   return (

@@ -55,7 +55,137 @@ async function login(page: Page, username: string) {
   await page.getByLabel('Contraseña', { exact: true }).fill(password);
   await page.getByRole('button', { name: 'Ingresar', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Cerrar sesión' })).toBeVisible();
+  // Finish the dashboard requests before a full page.goto(). WebKit reports
+  // requests interrupted by that navigation as access-control page errors.
+  await page.waitForLoadState('networkidle');
 }
+
+test('detalles distinguen un fallo del servidor de un registro inexistente', async ({ page, request }) => {
+  const account = await owner(request);
+  await login(page, account.username);
+  for (const resource of ['sales', 'customers']) {
+    await page.route(`**/api/${resource}/999999/`, route => route.fulfill({ status: 503, contentType: 'text/html', body: '<html>Traceback SECRET</html>' }));
+    await page.goto(`/${resource}/999999`);
+    await expect(page.getByRole('button', { name: 'Reintentar', exact: true })).toBeVisible();
+    await expect(page.locator('main')).toContainText('El servidor');
+    await expect(page.locator('body')).not.toContainText('SECRET');
+    await page.unroute(`**/api/${resource}/999999/`);
+    await page.getByRole('button', { name: 'Reintentar', exact: true }).click();
+    await expect(page.locator('main')).toContainText('No se encontró el recurso');
+  }
+});
+
+test('fallo al actualizar la cuenta conserva el formulario y permite reintentar', async ({ page, request }) => {
+  const account = await owner(request);
+  await page.clock.install();
+  await login(page, account.username);
+  await page.goto('/sales/new');
+  await page.getByLabel('Notas').fill('Conservar este borrador');
+  await page.route('**/api/me/', route => route.fulfill({ status: 503, json: { detail: 'Internal SECRET' } }));
+  // The profile refresh is periodic; advance the timer without waiting a minute.
+  await page.clock.runFor(61000);
+  await expect(page.getByRole('button', { name: 'Reintentar conexión' })).toBeVisible();
+  await expect(page.getByLabel('Notas')).toHaveValue('Conservar este borrador');
+  await expect(page.locator('body')).not.toContainText('SECRET');
+  await page.unroute('**/api/me/');
+  await page.getByRole('button', { name: 'Reintentar conexión' }).click();
+  await expect(page.getByRole('button', { name: 'Reintentar conexión' })).not.toBeVisible();
+  await expect(page.getByLabel('Notas')).toHaveValue('Conservar este borrador');
+});
+
+test('errores de pantalla conservan el menú y permiten navegar a otra sección', async ({ page, request }) => {
+  const account = await owner(request);
+  await login(page, account.username);
+  // A malformed successful response triggers a genuine rendering exception.
+  await page.route('**/api/sales/?*', route => route.fulfill({ json: { count: 1, results: { invalid: true } } }));
+  await page.goto('/sales');
+  await expect(page.getByRole('heading', { name: 'Algo salió mal' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Cerrar sesión' })).toBeVisible();
+  await page.getByRole('link', { name: 'Clientes', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Clientes', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Algo salió mal' })).not.toBeVisible();
+});
+
+test('selector de pago tolera cambios de texto como los de traducción', async ({ page, request }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  const account = await owner(request);
+  await login(page, account.username);
+  await page.goto('/sales/new');
+  const payment = page.locator('[data-slot="select-trigger"]');
+  await expect(payment).toContainText('Sin especificar');
+  const translateValue = async () => {
+    // Model the replacement of text nodes performed by browser translation tools.
+    // This does not claim to run Safari's proprietary translator.
+    await page.locator('[data-slot="select-value"]').evaluate(element => {
+      const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+      const texts: Node[] = [];
+      while (walker.nextNode()) texts.push(walker.currentNode);
+      for (const text of texts) {
+        const replacement = document.createElement('span');
+        replacement.textContent = text.textContent;
+        text.parentNode!.replaceChild(replacement, text);
+      }
+    });
+  };
+  await translateValue();
+  await payment.click();
+  await page.getByRole('option', { name: 'Efectivo', exact: true }).click();
+  expect(errors).toEqual([]);
+  await expect(payment).toContainText('Efectivo');
+  await translateValue();
+  await payment.click();
+  await page.getByRole('option', { name: 'QR', exact: true }).click();
+  expect(errors).toEqual([]);
+  await expect(payment).toContainText('QR');
+  await expect(page.getByRole('heading', { name: 'Nueva venta', exact: true })).toBeVisible();
+});
+
+test('selectores de venta y compra funcionan sin errores de página', async ({ page, request }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  const account = await owner(request);
+  const response = await request.post(`${api}/products/`, { headers: account.headers,
+    data: { name: 'Café Safari', price: '25', cost: '10', stock: 10 } });
+  expect(response.status()).toBe(201);
+  const product = await response.json();
+  const customerResponse = await request.post(`${api}/customers/`, { headers: account.headers,
+    data: { first_name: 'José', last_name: 'Safari' } });
+  expect(customerResponse.status()).toBe(201);
+  await login(page, account.username);
+  await page.goto('/sales/new');
+  const products = page.getByRole('combobox', { name: 'Buscar producto...' });
+  await products.fill('Café');
+  await page.getByRole('option', { name: /Café Safari/ }).click();
+  await expect(products).toHaveValue(/Café Safari/);
+  await products.click();
+  await expect(page.getByRole('option', { name: /Café Safari/ })).toBeVisible();
+  await products.press('Escape');
+  await expect(products).toHaveValue(/Café Safari/);
+  await page.getByRole('button', { name: 'Limpiar Buscar producto...' }).click();
+  await products.fill('inexistente');
+  await expect(page.getByText('No se encontraron resultados.')).toBeVisible();
+  await products.fill('Café');
+  await expect(page.getByRole('option', { name: /Café Safari/ })).toBeVisible();
+  await products.press('ArrowDown');
+  await products.press('Enter');
+  await expect(products).toHaveValue(/Café Safari/);
+  await page.getByRole('button', { name: 'Agregar producto' }).click();
+  const customers = page.getByRole('combobox', { name: 'Buscar cliente...' });
+  await customers.fill('José');
+  await page.getByRole('option', { name: 'José Safari' }).click();
+  await expect(customers).toHaveValue('José Safari');
+  await page.getByRole('combobox').filter({ hasText: 'Sin especificar' }).click();
+  await page.getByRole('option', { name: 'Efectivo', exact: true }).click();
+  await expect(page.getByRole('combobox').filter({ hasText: 'Efectivo' })).toBeVisible();
+  await page.goto('/purchases');
+  await page.getByRole('button', { name: 'Nueva compra', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('combobox', { name: 'Producto', exact: true }).selectOption(String(product.id));
+  await expect(dialog.getByRole('combobox', { name: 'Producto', exact: true })).toHaveValue(String(product.id));
+  await dialog.getByRole('button', { name: 'Cancelar', exact: true }).click();
+  expect(errors).toEqual([]);
+});
 
 test('crear cliente durante una venta conserva el carrito y la autorización elegida', async ({ page, request }) => {
   const account = await owner(request);

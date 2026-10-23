@@ -1,4 +1,5 @@
 import { useCompanyFormatting } from '@/lib/company-formatting';
+import { errorMessage } from '@/lib/errors';
 import { Can } from '@/components/shared/Can';
 import { useState, type FormEvent } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -40,7 +41,7 @@ export function CustomerDetailPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Partial<CustomerFormData>>({});
 
-  const { data: customer, isLoading } = useQuery({
+  const { data: customer, isLoading, error: loadError, refetch } = useQuery({
     queryKey: ['customer', customerId],
     queryFn: () => getCustomer(customerId),
     enabled: !!customerId,
@@ -100,7 +101,7 @@ export function CustomerDetailPage() {
   }
 
   if (!customer) {
-    return <p className="text-destructive">Cliente no encontrado.</p>;
+    return <div className="space-y-4"><p role="alert">{loadError ? errorMessage(loadError) : 'Cliente no encontrado.'}</p><div className="flex flex-wrap gap-3">{loadError && <Button onClick={() => void refetch()}>Reintentar</Button>}<Button variant="outline" onClick={() => navigate('/customers')}>Volver a clientes</Button></div></div>;
   }
 
   return (

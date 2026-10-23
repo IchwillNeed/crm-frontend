@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import axios from 'axios';
+import { errorMessage } from '@/lib/errors';
 import { createCompanyUser, updateCompanyUser } from '@/api/endpoints/users';
 import { getRoles } from '@/api/endpoints/catalog';
 import type { CompanyUser } from '@/types/user';
@@ -48,16 +48,12 @@ function UserFormDialogBody({ open, onOpenChange, user }: Props) {
       onOpenChange(false);
     },
     onError: (err) => {
-      if (axios.isAxiosError(err) && err.response?.data) {
-        const firstError = Object.values(err.response.data)[0];
-        setError(Array.isArray(firstError) ? firstError[0] : String(firstError));
-      } else {
-        setError('Ocurrió un error al crear el usuario.');
-      }
+      setError(errorMessage(err));
     },
   });
 
   const updateMutation = useMutation({
+    onError: (err) => setError(errorMessage(err)),
     mutationFn: (data: Partial<{ email: string; first_name: string; last_name: string; role: number | null }>) =>
       updateCompanyUser(user!.id, data),
     onSuccess: () => {
@@ -152,7 +148,7 @@ function UserFormDialogBody({ open, onOpenChange, user }: Props) {
             </Select>
           </div>
 
-          {error && <p className="text-sm text-destructive">{error}</p>}
+          {error && <p role="alert" className="text-sm text-destructive break-words">{error}</p>}
 
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

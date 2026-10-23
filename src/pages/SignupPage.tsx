@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { errorMessage } from '@/lib/errors';
 import { useAuth } from '@/lib/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,13 +36,7 @@ export function SignupPage() {
       });
       navigate('/dashboard');
     } catch (err) {
-      if (axios.isAxiosError(err) && err.response?.data) {
-        const data = err.response.data;
-        const firstError = Object.values(data)[0];
-        setError(Array.isArray(firstError) ? firstError[0] : String(firstError));
-      } else {
-        setError('Ocurrió un error al crear tu cuenta. Intenta de nuevo.');
-      }
+      setError(errorMessage(err));
     } finally {
       setIsSubmitting(false);
     }
@@ -121,7 +115,7 @@ export function SignupPage() {
               />
             </div>
 
-            {error && <p className="text-sm text-destructive">{error}</p>}
+            {error && <p role="alert" className="text-sm text-destructive break-words">{error}</p>}
 
             <Button type="submit" className="w-full" disabled={isSubmitting}>
               {isSubmitting ? 'Creando cuenta...' : 'Crear cuenta'}

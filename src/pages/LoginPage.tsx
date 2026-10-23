@@ -1,6 +1,8 @@
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/auth-context';
+import axios from 'axios';
+import { errorMessage } from '@/lib/errors';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,8 +25,9 @@ export function LoginPage() {
     try {
       await login({ username, password });
       navigate('/');
-    } catch {
-      setError('Usuario o contraseña incorrectos.');
+    } catch (failure) {
+      setError(axios.isAxiosError(failure) && failure.response?.status === 401 && failure.config?.url?.endsWith('/token/')
+        ? 'Usuario o contraseña incorrectos.' : errorMessage(failure));
     } finally {
       setIsSubmitting(false);
     }
@@ -60,7 +63,7 @@ export function LoginPage() {
               />
             </div>
             {error && (
-              <p className="text-sm text-destructive">{error}</p>
+              <p role="alert" className="text-sm text-destructive break-words">{error}</p>
             )}
             <Button type="submit" className="w-full" disabled={isSubmitting}>
               {isSubmitting ? 'Ingresando...' : 'Ingresar'}
