@@ -15,6 +15,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { RemoteSelect } from '@/components/shared/RemoteSelect';
+import { CustomerFormDialog } from '@/components/customers/CustomerFormDialog';
+import { usePermissions } from '@/lib/permissions';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table';
@@ -30,8 +32,10 @@ interface CartLine {
 export function NewSalePage() {
   const { formatCurrency } = useCompanyFormatting();
   const navigate = useNavigate();
+  const { can } = usePermissions();
 
   const [customer, setCustomer] = useState<Customer | null>(null);
+  const [customerDialogOpen, setCustomerDialogOpen] = useState(false);
   const [paymentMethodId, setPaymentMethodId] = useState<string>('');
   const [notes, setNotes] = useState('');
 
@@ -209,6 +213,11 @@ export function NewSalePage() {
                 onChange={setCustomer}
                 placeholder="Buscar cliente..."
               />
+              {can('customers.write') && (
+                <Button type="button" variant="outline" disabled={isSubmitting} onClick={() => setCustomerDialogOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" /> Nuevo cliente
+                </Button>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -228,8 +237,8 @@ export function NewSalePage() {
             </div>
 
             <div className="space-y-2">
-              <Label>Notas</Label>
-              <Input value={notes} onChange={(e) => setNotes(e.target.value)} />
+              <Label htmlFor="sale-notes">Notas</Label>
+              <Input id="sale-notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
             </div>
 
             <div className="border-t pt-4">
@@ -251,6 +260,7 @@ export function NewSalePage() {
           </CardContent>
         </Card>
       </div>
+      <CustomerFormDialog open={customerDialogOpen} onOpenChange={setCustomerDialogOpen} onCreated={setCustomer} />
     </div>
   );
 }

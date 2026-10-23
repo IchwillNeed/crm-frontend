@@ -57,6 +57,62 @@ async function login(page: Page, username: string) {
   await expect(page.getByRole('button', { name: 'Cerrar sesión' })).toBeVisible();
 }
 
+test('crear cliente durante una venta conserva el carrito y la autorización elegida', async ({ page, request }) => {
+  const account = await owner(request);
+  const created = await request.post(`${api}/products/`, { headers: account.headers,
+    data: { name: 'Producto cliente en venta', price: '25', cost: '10', stock: 10 } });
+  expect(created.status()).toBe(201);
+  const product = await created.json();
+  await login(page, account.username);
+  await page.goto('/sales/new');
+  await page.getByRole('combobox', { name: 'Buscar producto...' }).fill(product.name);
+  await page.getByRole('option', { name: new RegExp(product.name) }).click();
+  await page.getByLabel('Cantidad', { exact: true }).fill('2');
+  await page.getByRole('button', { name: 'Agregar producto' }).click();
+  await page.getByLabel('Notas', { exact: true }).fill('Conservar notas de venta');
+  await page.getByRole('button', { name: 'Nuevo cliente', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByRole('checkbox')).not.toBeChecked();
+  await dialog.getByLabel('Nombre', { exact: true }).fill('Descartado');
+  await dialog.getByRole('button', { name: 'Cancelar', exact: true }).click();
+  await expect(page.getByRole('row').filter({ hasText: product.name })).toContainText('2');
+  await expect(page.getByLabel('Notas', { exact: true })).toHaveValue('Conservar notas de venta');
+  await page.getByRole('button', { name: 'Nuevo cliente', exact: true }).click();
+  await expect(dialog.getByLabel('Nombre', { exact: true })).toHaveValue('');
+  await expect(dialog.getByRole('checkbox')).not.toBeChecked();
+  await dialog.getByLabel('Nombre', { exact: true }).fill('Cliente');
+  await dialog.getByLabel('Apellido', { exact: true }).fill('Durante venta');
+  await dialog.getByLabel('Email', { exact: true }).fill('inline@example.test');
+  await dialog.getByRole('checkbox').check();
+  await dialog.getByLabel('Notas', { exact: true }).fill('Autorización ficticia para prueba');
+  // A rejected save must keep both forms, allow correction and not create a sale.
+  await page.route('**/api/customers/', async route => {
+    if (route.request().method() === 'POST') {
+      await route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ detail: 'Revisa los datos del cliente.' }) });
+    } else await route.continue();
+  });
+  await dialog.getByRole('button', { name: 'Guardar', exact: true }).click();
+  await expect(dialog.getByRole('alert')).toContainText('Revisa los datos del cliente.');
+  await expect(dialog.getByLabel('Nombre', { exact: true })).toHaveValue('Cliente');
+  await page.unroute('**/api/customers/');
+  await dialog.getByRole('button', { name: 'Guardar', exact: true }).click();
+  await expect(dialog).not.toBeVisible();
+  await expect(page).toHaveURL(/\/sales\/new$/);
+  await expect(page.getByRole('combobox', { name: 'Buscar cliente...' })).toHaveValue('Cliente Durante venta');
+  await expect(page.getByRole('row').filter({ hasText: product.name })).toContainText('2');
+  await expect(page.getByLabel('Notas', { exact: true })).toHaveValue('Conservar notas de venta');
+  const customers = await (await request.get(`${api}/customers/`, { headers: account.headers })).json();
+  expect(customers).toHaveLength(1);
+  expect(customers[0].accepts_marketing).toBe(true);
+  await page.getByRole('button', { name: 'Registrar venta', exact: true }).click();
+  await expect(page).toHaveURL(/\/sales\/\d+$/);
+  const saleId = page.url().split('/').pop();
+  const sale = await (await request.get(`${api}/sales/${saleId}/`, { headers: account.headers })).json();
+  expect(sale.customer).toBe(customers[0].id);
+  expect(Number(sale.total)).toBe(50);
+  expect(sale.notes).toBe('Conservar notas de venta');
+});
+
 test('registro, producto, venta atómica, cancelación y dashboard', async ({ page, request }) => {
   const username = `signup_${Date.now()}`;
   await page.goto('/signup');

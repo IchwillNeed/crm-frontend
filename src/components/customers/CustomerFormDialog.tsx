@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createCustomer, updateCustomer } from '@/api/endpoints/customers';
+import { errorMessage } from '@/lib/errors';
 import type { Customer, CustomerFormData } from '@/types/customer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +19,7 @@ interface CustomerFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   customer?: Customer | null;
+  onCreated?: (customer: Customer) => void;
 }
 
 const emptyForm: Partial<CustomerFormData> = {
@@ -35,7 +37,7 @@ export function CustomerFormDialog(props: CustomerFormDialogProps) {
   return props.open ? <CustomerFormDialogBody key={props.customer?.id ?? "new"} {...props} /> : null;
 }
 
-function CustomerFormDialogBody({ open, onOpenChange, customer }: CustomerFormDialogProps) {
+function CustomerFormDialogBody({ open, onOpenChange, customer, onCreated }: CustomerFormDialogProps) {
   const [formData, setFormData] = useState<Partial<CustomerFormData>>(customer ? { first_name: customer.first_name, last_name: customer.last_name, email: customer.email ?? '', phone: customer.phone ?? '', address: customer.address ?? '', city: customer.city ?? '', notes: customer.notes ?? '', accepts_marketing: customer.accepts_marketing ?? false } : emptyForm);
   const queryClient = useQueryClient();
   const isEditing = !!customer;
@@ -43,8 +45,10 @@ function CustomerFormDialogBody({ open, onOpenChange, customer }: CustomerFormDi
 
   const createMutation = useMutation({
     mutationFn: createCustomer,
-    onSuccess: () => {
+    onSuccess: (createdCustomer) => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
+      queryClient.invalidateQueries({ queryKey: ['remote-select', '/customers/'] });
+      onCreated?.(createdCustomer);
       onOpenChange(false);
     },
   });
@@ -61,6 +65,7 @@ function CustomerFormDialogBody({ open, onOpenChange, customer }: CustomerFormDi
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     if (isEditing) {
       updateMutation.mutate(formData);
     } else {
@@ -73,8 +78,8 @@ function CustomerFormDialogBody({ open, onOpenChange, customer }: CustomerFormDi
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+    <Dialog open={open} onOpenChange={nextOpen => { if (!isSubmitting) onOpenChange(nextOpen); }}>
+      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{isEditing ? 'Editar cliente' : 'Nuevo cliente'}</DialogTitle>
         </DialogHeader>
@@ -163,13 +168,18 @@ function CustomerFormDialogBody({ open, onOpenChange, customer }: CustomerFormDi
           </p>
 
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" disabled={isSubmitting} onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? 'Guardando...' : 'Guardar'}
             </Button>
           </DialogFooter>
+          {(createMutation.isError || updateMutation.isError) && (
+            <p role="alert" className="text-sm text-destructive">
+              {errorMessage(createMutation.error ?? updateMutation.error)}
+            </p>
+          )}
         </form>
       </DialogContent>
     </Dialog>
