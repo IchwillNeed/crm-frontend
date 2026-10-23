@@ -6,7 +6,8 @@ import { AnalyticsDetails } from '@/components/dashboard/AnalyticsDetails';
 import { InsightsSection } from '@/components/dashboard/InsightsSection';
 import type { AnalyticsFilters } from '@/types/analytics-filters';
 import { Button } from '@/components/ui/button';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useIsFetching } from '@tanstack/react-query';
+import { LoadingStatus, PageLoading } from '@/components/shared/LoadingState';
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
@@ -86,6 +87,7 @@ export function DashboardPage() {
 }
 
 function DashboardContent({ filters }: { filters: AnalyticsFilters }) {
+  const updating = useIsFetching({ predicate: query => ['dashboard-overview', 'sales-analytics', 'customer-analytics', 'product-analytics', 'expense-analytics', 'dashboard-insights'].includes(String(query.queryKey[0])) });
   const { formatCurrency } = useCompanyFormatting();
   const { data: overview, isLoading: loadingOverview, error: overviewError, refetch } = useQuery({
     queryKey: ['dashboard-overview', filters],
@@ -112,9 +114,7 @@ function DashboardContent({ filters }: { filters: AnalyticsFilters }) {
       <Button onClick={() => void refetch()}>Reintentar</Button></div>;
   }
   if (loadingOverview || !overview) {
-    return <div className="space-y-4"><div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32 w-full" />)}
-    </div></div>;
+    return <PageLoading kind="dashboard" />;
   }
 
   const evolutionData = salesAnalytics?.evolution.map((d) => ({
@@ -129,6 +129,7 @@ function DashboardContent({ filters }: { filters: AnalyticsFilters }) {
 
   return (
     <div className="space-y-6">
+      {updating > 0 && <LoadingStatus label="Actualizando resumen…" />}
       <div>
         <p className="text-muted-foreground">{overview.period.start.slice(0, 10)} — {overview.period.end.slice(0, 10)}</p>
       </div>

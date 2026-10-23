@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { LoadingStatus } from '@/components/shared/LoadingState';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface ResultPage<T> { results: T[]; count: number; next: string | null; previous: string | null }
 
@@ -39,17 +41,18 @@ export function RemoteSelect<T extends { id: number }>({ path, value, onChange, 
     </div>
     {open && <div className="absolute z-50 mt-1 w-full rounded border bg-background p-2 shadow-lg"
       onMouseDown={event => { if (event.button === 0) event.preventDefault(); }}>
-      {query.isFetching && <p role="status">Buscando…</p>}
+      {query.isFetching && <LoadingStatus label="Buscando…" />}
+      {query.isPending && <div aria-hidden="true" className="space-y-2 py-2"><Skeleton className="h-8 w-full" /><Skeleton className="h-8 w-3/4" /><Skeleton className="h-8 w-5/6" /></div>}
       {query.isError && <p role="alert">No se pudo buscar. <Button type="button" onClick={() => void query.refetch()}>Reintentar</Button></p>}
       <div id={`${id}-list`} role="listbox" aria-label={placeholder} className="max-h-56 overflow-auto">
         {items.map((item, index) => <button type="button" role="option" id={`${id}-${index}`} aria-selected={value?.id === item.id}
           key={item.id} className={`block w-full rounded p-2 text-left text-sm hover:bg-muted ${active === index ? 'bg-muted' : ''}`}
           onMouseEnter={() => setActive(index)} onClick={() => select(item)}>{label(item)}</button>)}
       </div>
-      {!query.isPending && !query.isError && !items.length && <p>No se encontraron resultados.</p>}
-      <div className="mt-2 flex items-center justify-between gap-2 text-xs">
+      {!query.isFetching && !query.isPending && !query.isError && !items.length && <p>No se encontraron resultados.</p>}
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs">
         <Button type="button" variant="outline" disabled={!query.data?.previous || query.isFetching} onClick={() => { setPage(page - 1); setActive(-1); }}>Anterior</Button>
-        <span>{query.data?.count ?? 0} resultados</span>
+        <span>{query.data ? `${query.data.count} resultados` : '—'}</span>
         <Button type="button" variant="outline" disabled={!query.data?.next || query.isFetching} onClick={() => { setPage(page + 1); setActive(-1); }}>Más resultados</Button>
       </div>
     </div>}

@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { LoadingStatus } from '@/components/shared/LoadingState';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createCustomer, updateCustomer } from '@/api/endpoints/customers';
 import { errorMessage } from '@/lib/errors';
@@ -172,7 +173,7 @@ function CustomerFormDialogBody({ open, onOpenChange, customer, onCreated }: Cus
               Cancelar
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Guardando...' : 'Guardar'}
+              {isSubmitting ? <LoadingStatus label="Guardando…" slowMessage={false} /> : 'Guardar'}
             </Button>
           </DialogFooter>
           {(createMutation.isError || updateMutation.isError) && (

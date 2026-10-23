@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { LoadingStatus } from '@/components/shared/LoadingState';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createProduct, updateProduct } from '@/api/endpoints/catalog';
 import type { Product } from '@/types/catalog';
@@ -176,7 +177,7 @@ function ProductFormDialogBody({ open, onOpenChange, product }: ProductFormDialo
               Cancelar
             </Button>
             <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Guardando...' : 'Guardar'}
+              {isSubmitting ? <LoadingStatus label="Guardando…" slowMessage={false} /> : 'Guardar'}
             </Button>
           </DialogFooter>
         </form>

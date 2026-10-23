@@ -1,4 +1,5 @@
 import { errorMessage } from '@/lib/errors';
+import { LoadingStatus } from '@/components/shared/LoadingState';
 import { useCompanyFormatting } from '@/lib/company-formatting';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -46,7 +47,8 @@ export function NewSalePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  const { data: paymentMethods } = useQuery({ queryKey: ['payment-methods'], queryFn: getPaymentMethods });
+  const paymentQuery = useQuery({ queryKey: ['payment-methods'], queryFn: getPaymentMethods });
+  const paymentMethods = paymentQuery.data;
 
   const total = cart.reduce((sum, line) => sum + line.quantity * line.unitPrice, 0);
   
@@ -91,6 +93,7 @@ export function NewSalePage() {
   });
 
   const handleSubmit = async () => {
+    if (isSubmitting) return;
     setError('');
     if (cart.length === 0) {
       setError('Agrega al menos un producto a la venta.');
@@ -117,7 +120,7 @@ export function NewSalePage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/sales')}>
+        <Button variant="ghost" size="icon" disabled={isSubmitting} onClick={() => navigate('/sales')}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
@@ -126,14 +129,14 @@ export function NewSalePage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
+      <fieldset disabled={isSubmitting} aria-busy={isSubmitting} className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-3">
+        <Card className="lg:col-span-2" style={{ overflow: 'visible' }}>
           <CardHeader>
             <CardTitle>Productos</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-end gap-3">
-              <div className="flex-1 space-y-2">
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="min-w-0 basis-full space-y-2 sm:flex-1 sm:basis-0">
                 <Label>Producto</Label>
                 <RemoteSelect<Product>
                   path="/products/" params={{ active_only: 'true', in_stock: 'true' }}
@@ -199,7 +202,7 @@ export function NewSalePage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card style={{ overflow: 'visible' }}>
           <CardHeader>
             <CardTitle>Detalles de la venta</CardTitle>
           </CardHeader>
@@ -222,9 +225,9 @@ export function NewSalePage() {
 
             <div className="space-y-2">
               <Label>Método de pago (opcional)</Label>
-              <Select value={paymentMethodId} onValueChange={setPaymentMethodId}>
+              <Select disabled={isSubmitting || paymentQuery.isPending || !paymentMethods} value={paymentMethodId} onValueChange={setPaymentMethodId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Sin especificar" />
+                  <SelectValue placeholder={paymentQuery.isPending ? 'Cargando métodos…' : 'Sin especificar'} />
                 </SelectTrigger>
                 <SelectContent>
                   {paymentMethods?.filter(pm => pm.is_active).map((pm) => (
@@ -234,6 +237,8 @@ export function NewSalePage() {
                   ))}
                 </SelectContent>
               </Select>
+              {paymentQuery.isFetching && <LoadingStatus label="Cargando métodos de pago…" />}
+              {paymentQuery.isError && <p role="alert" className="text-sm text-destructive">No se pudieron cargar los métodos de pago. <Button type="button" variant="outline" onClick={() => void paymentQuery.refetch()}>Reintentar</Button></p>}
             </div>
 
             <div className="space-y-2">
@@ -255,11 +260,12 @@ export function NewSalePage() {
               onClick={handleSubmit}
               disabled={isSubmitting || cart.length === 0}
             >
-              {isSubmitting ? 'Registrando...' : 'Registrar venta'}
+              {isSubmitting ? <LoadingStatus label="Registrando…" slowMessage={false} /> : 'Registrar venta'}
             </Button>
+            {isSubmitting && <LoadingStatus label="Estamos guardando la venta. Espera antes de salir." slowMessage="Está tardando más de lo habitual. No vuelvas a enviar la venta; espera la confirmación." />}
           </CardContent>
         </Card>
-      </div>
+      </fieldset>
       <CustomerFormDialog open={customerDialogOpen} onOpenChange={setCustomerDialogOpen} onCreated={setCustomer} />
     </div>
   );

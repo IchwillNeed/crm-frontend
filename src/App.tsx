@@ -1,4 +1,5 @@
 import { lazy, Suspense } from 'react';
+import { PageLoading } from '@/components/shared/LoadingState';
 const PasswordResetPage = lazy(() => import('@/pages/PasswordResetPage').then(module => ({ default: module.PasswordResetPage })));
 import { usePermissions, type Permission } from '@/lib/permissions';
 import { Button } from '@/components/ui/button';
@@ -27,7 +28,7 @@ import { queryClient } from '@/lib/query-client';
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated, isLoading, error, logout, retryProfile } = useAuth();
 
-  if (isLoading) return <div>Cargando...</div>;
+  if (isLoading) return <div className="mx-auto max-w-6xl p-6"><PageLoading /></div>;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
 
   if (error && !user) return <div className="mx-auto max-w-lg p-6 space-y-4"><p role="alert">No se pudo cargar tu cuenta. Revisa tu conexión y vuelve a intentarlo.</p><div className="flex flex-wrap gap-3"><Button onClick={retryProfile}>Reintentar</Button><Button variant="outline" onClick={logout}>Volver a iniciar sesión</Button></div></div>;
@@ -78,7 +79,7 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <BrowserRouter>
-          <Suspense fallback={<p className="p-6" role="status">Cargando…</p>}><AppRoutes /></Suspense>
+          <Suspense fallback={<div className="mx-auto max-w-6xl p-6"><PageLoading /></div>}><AppRoutes /></Suspense>
         </BrowserRouter>
       </AuthProvider>
       <Toaster />

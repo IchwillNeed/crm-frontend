@@ -1,5 +1,7 @@
 import { Outlet, useLocation } from 'react-router-dom';
 import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
+import { Suspense } from 'react';
+import { PageLoading } from '@/components/shared/LoadingState';
 import { Sidebar } from './Sidebar';
 import { useAuth } from '@/lib/auth-context';
 import { useQueryClient } from '@tanstack/react-query';
@@ -18,7 +20,7 @@ export function DashboardLayout() {
           <p>{user.access.reason} {user.access.grace_until && `Hasta ${new Date(user.access.grace_until).toLocaleString()}.`}</p>
           <Button variant="outline" onClick={() => { void client.invalidateQueries({ queryKey: ['me'] }); void client.invalidateQueries({ queryKey: ['my-subscription'] }); }}>Actualizar estado del plan</Button>
         </div>}
-        <ErrorBoundary key={location.pathname} contained><Outlet /></ErrorBoundary>
+        <ErrorBoundary key={location.pathname} contained><Suspense fallback={<PageLoading kind={location.pathname === '/dashboard' ? 'dashboard' : location.pathname === '/sales/new' ? 'form' : 'table'} />}><Outlet /></Suspense></ErrorBoundary>
       </main>
     </div>
   );

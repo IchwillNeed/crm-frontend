@@ -60,6 +60,41 @@ async function login(page: Page, username: string) {
   await page.waitForLoadState('networkidle');
 }
 
+test('cargas lentas muestran progreso sin resultados vacíos prematuros', async ({ page, request }) => {
+  const account = await owner(request);
+  await login(page, account.username);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.clock.install();
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  await page.route('**/api/customers/?page=*', async route => {
+    await gate;
+    await route.fulfill({ json: { results: [], count: 0, next: null, previous: null } });
+  });
+  await page.getByRole('link', { name: 'Clientes', exact: true }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Cargando lista' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Cerrar sesión' })).toBeVisible();
+  await page.clock.fastForward(11000);
+  await expect(page.getByText('Está tardando más de lo habitual.', { exact: false })).toBeVisible();
+  release();
+  await expect(page.getByText('Cargando lista…', { exact: true })).not.toBeVisible();
+  await page.goto('/sales/new');
+  let releaseSearch!: () => void;
+  const searchGate = new Promise<void>(resolve => { releaseSearch = resolve; });
+  await page.route('**/api/products/?*', async route => {
+    await searchGate;
+    await route.fulfill({ json: { results: [], count: 0, next: null, previous: null } });
+  });
+  await page.getByRole('combobox', { name: 'Buscar producto...' }).click();
+  await expect(page.getByText('Buscando…', { exact: true })).toBeVisible();
+  await expect(page.getByRole('combobox', { name: 'Buscar producto...' }).locator('xpath=ancestor::*[@data-slot="card"]')).toHaveCSS('overflow', 'visible');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  await page.screenshot({ path: 'test-results/loading-mobile.png', fullPage: true });
+  await expect(page.getByText('No se encontraron resultados.')).not.toBeVisible();
+  releaseSearch();
+  await expect(page.getByText('No se encontraron resultados.')).toBeVisible();
+});
+
 test('detalles distinguen un fallo del servidor de un registro inexistente', async ({ page, request }) => {
   const account = await owner(request);
   await login(page, account.username);
