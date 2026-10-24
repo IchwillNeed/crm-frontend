@@ -4,9 +4,11 @@ import { login as loginApi, signup as signupApi, type TokenResponse, type LoginC
 import { apiClient, startSession, clearSession } from '@/api/client';
 import { AuthContext, type CurrentUser } from '@/lib/auth-context';
 import { toast } from 'sonner';
+import { useLeaveConfirmation } from '@/lib/leave-confirmation';
 
 const getMe = async () => (await apiClient.get<CurrentUser>('/me/')).data;
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const { confirmLeave } = useLeaveConfirmation();
   const client = useQueryClient();
   const [hasToken, setHasToken] = useState(() => !!localStorage.getItem('access_token'));
   const profile = useQuery({ queryKey: ['me'], queryFn: getMe, enabled: hasToken, retry: false, refetchInterval: 60000 });
@@ -25,6 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (data: LoginCredentials) => accept(await loginApi(data));
   const signup = async (data: SignupData) => accept(await signupApi(data));
   const logout = async () => {
+    if (!await confirmLeave()) return;
     try {
       await apiClient.post('/logout/');
     } catch {

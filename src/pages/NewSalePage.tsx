@@ -1,8 +1,9 @@
 import { errorMessage } from '@/lib/errors';
 import { LoadingStatus } from '@/components/shared/LoadingState';
 import { useCompanyFormatting } from '@/lib/company-formatting';
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate, useBlocker, useBeforeUnload } from 'react-router-dom';
+import { useLeaveConfirmation } from '@/lib/leave-confirmation';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Plus, Trash2, ArrowLeft } from 'lucide-react';
 import type { Customer } from '@/types/customer';
@@ -46,6 +47,21 @@ export function NewSalePage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const saved = useRef(false);
+  const dirty = cart.length > 0 || customer !== null || selectedProduct !== null || paymentMethodId !== '' || notes.trim() !== '' || quantity !== '1';
+  const { register, confirmLeave } = useLeaveConfirmation();
+  useEffect(() => register(() => ({ dirty: dirty && !saved.current, saving: isSubmitting && !saved.current }), () => { saved.current = true; }), [register, dirty, isSubmitting]);
+  const blocker = useBlocker(useCallback(() => !saved.current && (dirty || isSubmitting), [dirty, isSubmitting]));
+  useEffect(() => {
+    let active = true;
+    if (blocker.state === 'blocked') {
+      void confirmLeave().then(leave => { if (active) { if (leave) blocker.proceed(); else blocker.reset(); } });
+    }
+    return () => { active = false; };
+  }, [blocker, confirmLeave]);
+  useBeforeUnload(useCallback((event: BeforeUnloadEvent) => {
+    if (!saved.current && (dirty || isSubmitting)) { event.preventDefault(); event.returnValue = ''; }
+  }, [dirty, isSubmitting]));
 
   const paymentQuery = useQuery({ queryKey: ['payment-methods'], queryFn: getPaymentMethods });
   const paymentMethods = paymentQuery.data;
@@ -109,6 +125,7 @@ export function NewSalePage() {
         notes,
       });
 
+      saved.current = true;
       navigate(`/sales/${sale.id}`);
     } catch (failure) {
       setError(errorMessage(failure));

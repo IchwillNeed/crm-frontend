@@ -60,6 +60,96 @@ async function login(page: Page, username: string) {
   await page.waitForLoadState('networkidle');
 }
 
+test('borrador de venta permite cancelar la salida, volver atrás y descartar', async ({ page, request }) => {
+  const account = await owner(request);
+  await login(page, account.username);
+  await page.getByRole('link', { name: 'Ventas', exact: true }).click();
+  await page.getByRole('button', { name: 'Nueva venta', exact: true }).click();
+  await page.getByLabel('Notas', { exact: true }).fill('No perder este borrador');
+  await page.getByRole('link', { name: 'Productos', exact: true }).click();
+  const dialog = page.getByRole('alertdialog');
+  await expect(dialog).toContainText('¿Salir sin guardar la venta?');
+  await dialog.getByRole('button', { name: 'Seguir editando' }).click();
+  await expect(page.getByLabel('Notas', { exact: true })).toHaveValue('No perder este borrador');
+  expect(await page.evaluate(() => {
+    const event = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(event);
+    return event.defaultPrevented;
+  })).toBe(true);
+  await page.evaluate(() => history.back());
+  await expect(dialog).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(dialog).not.toBeVisible();
+  await expect(page).toHaveURL(/\/sales\/new$/);
+  await page.getByRole('link', { name: 'Productos', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Salir sin guardar', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Productos', exact: true })).toBeVisible();
+  await page.getByRole('link', { name: 'Ventas', exact: true }).click();
+  await page.getByRole('button', { name: 'Nueva venta', exact: true }).click();
+  await expect(page.getByLabel('Notas', { exact: true })).toHaveValue('');
+  await page.getByRole('link', { name: 'Clientes', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Clientes', exact: true })).toBeVisible();
+  await expect(dialog).not.toBeVisible();
+});
+
+test('cerrar sesión pide confirmar antes de descartar el borrador', async ({ page, request }) => {
+  const account = await owner(request);
+  await login(page, account.username);
+  await page.goto('/sales/new');
+  await page.getByLabel('Notas', { exact: true }).fill('Pendiente');
+  await page.getByRole('button', { name: 'Cerrar sesión' }).click();
+  const dialog = page.getByRole('alertdialog');
+  await dialog.getByRole('button', { name: 'Seguir editando' }).click();
+  await expect(page.getByLabel('Notas', { exact: true })).toHaveValue('Pendiente');
+  await page.getByRole('button', { name: 'Cerrar sesión' }).click();
+  await dialog.getByRole('button', { name: 'Salir sin guardar', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Ingresar', exact: true })).toBeVisible();
+  await expect(dialog).not.toBeVisible();
+});
+
+test('durante el guardado no se abandona la venta y al terminar no pide descartar', async ({ page, request }) => {
+  const account = await owner(request);
+  await request.post(`${api}/products/`, { headers: account.headers, data: { name: 'Venta pendiente', price: '10', cost: '2', stock: 5 } });
+  await login(page, account.username);
+  await page.goto('/sales/new');
+  await page.getByPlaceholder('Buscar producto...').fill('Venta pendiente');
+  await page.getByRole('option', { name: /Venta pendiente/ }).click();
+  await page.getByRole('button', { name: 'Agregar producto' }).click();
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  await page.route('**/api/sales/', async route => { await gate; await route.continue(); });
+  await page.getByRole('button', { name: 'Registrar venta', exact: true }).click();
+  await expect(page.getByText('Estamos guardando la venta.', { exact: false })).toBeVisible();
+  await page.getByRole('link', { name: 'Productos', exact: true }).click();
+  await expect(page.getByText('Espera a que termine el registro de la venta antes de salir.')).toBeVisible();
+  await expect(page).toHaveURL(/\/sales\/new$/);
+  await expect(page.getByRole('alertdialog')).not.toBeVisible();
+  release();
+  await expect(page.getByRole('heading', { name: /Venta #/ })).toBeVisible();
+  await expect(page.getByRole('alertdialog')).not.toBeVisible();
+});
+
+test('listas vacías ofrecen crear y las búsquedas sin resultados permiten limpiar', async ({ page, request }) => {
+  const account = await owner(request);
+  await login(page, account.username);
+  for (const [section, action] of [['Clientes', 'Crear primer cliente'], ['Productos', 'Crear primer producto']]) {
+    await page.getByRole('link', { name: section, exact: true }).click();
+    await page.getByRole('button', { name: action }).click();
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await page.getByRole('dialog').getByRole('button', { name: 'Cancelar' }).click();
+    await page.getByRole('textbox', { name: 'Buscar en la lista' }).fill('sin coincidencias');
+    await page.getByRole('button', { name: 'Buscar', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'No encontramos coincidencias' })).toBeVisible();
+    await expect(page.getByRole('button', { name: action })).not.toBeVisible();
+    await page.getByRole('button', { name: 'Limpiar búsqueda' }).click();
+    await expect(page.getByRole('textbox', { name: 'Buscar en la lista' })).toHaveValue('');
+    await expect(page.getByRole('button', { name: action })).toBeVisible();
+  }
+  await page.getByRole('link', { name: 'Ventas', exact: true }).click();
+  await page.getByRole('button', { name: 'Registrar primera venta' }).click();
+  await expect(page.getByRole('heading', { name: 'Nueva venta', exact: true })).toBeVisible();
+});
+
 test('cargas lentas muestran progreso sin resultados vacíos prematuros', async ({ page, request }) => {
   const account = await owner(request);
   await login(page, account.username);
@@ -213,7 +303,8 @@ test('selectores de venta y compra funcionan sin errores de página', async ({ p
   await page.getByRole('combobox').filter({ hasText: 'Sin especificar' }).click();
   await page.getByRole('option', { name: 'Efectivo', exact: true }).click();
   await expect(page.getByRole('combobox').filter({ hasText: 'Efectivo' })).toBeVisible();
-  await page.goto('/purchases');
+  await page.getByRole('link', { name: 'Compras', exact: true }).click();
+  await page.getByRole('button', { name: 'Salir sin guardar', exact: true }).click();
   await page.getByRole('button', { name: 'Nueva compra', exact: true }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByRole('combobox', { name: 'Producto', exact: true }).selectOption(String(product.id));
@@ -392,7 +483,7 @@ test('preferencias y cambio de empresa no reutilizan datos de la sesión anterio
   await page.getByRole('button', { name: 'Cerrar sesión' }).click();
   await login(page, second.username);
   await page.getByRole('link', { name: 'Productos', exact: true }).click();
-  await expect(page.getByText('No hay productos registrados todavía.', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Empieza tu catálogo', exact: true })).toBeVisible();
   await expect(page.getByText('Solo empresa A', { exact: true })).toHaveCount(0);
 });
 

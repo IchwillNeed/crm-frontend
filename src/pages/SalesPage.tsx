@@ -1,4 +1,5 @@
 import { usePagedList } from '@/lib/use-paged-list';
+import { EmptyState } from '@/components/shared/EmptyState';
 import { exportCsv } from '@/lib/export-csv';
 import { useCompanyFormatting } from '@/lib/company-formatting';
 import { Can } from '@/components/shared/Can';
@@ -21,7 +22,7 @@ export function SalesPage() {
   const { formatCurrency, formatDate } = useCompanyFormatting();
   const navigate = useNavigate();
 
-  const { data: sales, isLoading, controls } = usePagedList<Sale>('sales', '/sales/');
+  const { data: sales, isLoading, controls, searching, clearSearch } = usePagedList<Sale>('sales', '/sales/');
   const { data: customers } = useQuery({ queryKey: ['customers'], queryFn: getCustomers });
 
   const customerName = (id: number | null) => {
@@ -66,7 +67,7 @@ export function SalesPage() {
             ) : sales?.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-center text-muted-foreground">
-                  No hay ventas registradas todavía.
+                  <EmptyState title="Aún no registraste ventas" description="Cuando registres una venta, podrás consultar aquí sus productos, importe y estado." searching={searching} clearSearch={clearSearch}><Can permission="sales.create"><Button onClick={() => navigate('/sales/new')}>Registrar primera venta</Button></Can></EmptyState>
                 </TableCell>
               </TableRow>
             ) : (

@@ -3,7 +3,9 @@ import { PageLoading } from '@/components/shared/LoadingState';
 const PasswordResetPage = lazy(() => import('@/pages/PasswordResetPage').then(module => ({ default: module.PasswordResetPage })));
 import { usePermissions, type Permission } from '@/lib/permissions';
 import { Button } from '@/components/ui/button';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { createBrowserRouter, RouterProvider, Routes, Route, Navigate } from 'react-router-dom';
+import { LeaveConfirmationProvider } from '@/contexts/LeaveConfirmationProvider';
+import { ErrorBoundary } from '@/components/shared/ErrorBoundary';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { useAuth } from '@/lib/auth-context';
@@ -74,14 +76,14 @@ function AppRoutes() {
   );
 }
 
+const router = createBrowserRouter([{ path: '*', element: <ErrorBoundary><Suspense fallback={<div className="mx-auto max-w-6xl p-6"><PageLoading /></div>}><AppRoutes /></Suspense></ErrorBoundary>, errorElement: <div role="alert" className="p-6 space-y-4"><p>No se pudo mostrar esta pantalla.</p><Button onClick={() => window.location.reload()}>Recargar página</Button></div> }]);
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <BrowserRouter>
-          <Suspense fallback={<div className="mx-auto max-w-6xl p-6"><PageLoading /></div>}><AppRoutes /></Suspense>
-        </BrowserRouter>
-      </AuthProvider>
+      <LeaveConfirmationProvider><AuthProvider>
+        <RouterProvider router={router} />
+      </AuthProvider></LeaveConfirmationProvider>
       <Toaster />
     </QueryClientProvider>
   );

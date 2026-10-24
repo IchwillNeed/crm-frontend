@@ -15,6 +15,8 @@ export function usePagedList<T>(key: string, path: string) {
   const totalPages = Math.max(1, Math.ceil((query.data?.count ?? 0) / 25));
   const currentPage = Math.min(page, totalPages);
   return {
+    searching: search !== '',
+    clearSearch: () => { setSearch(''); setDraft(''); setPage(1); },
     data: query.data?.results, isLoading: query.isPending,
     controls: <div className="space-y-3">
       <form onSubmit={apply} className="flex flex-wrap gap-2"><Input aria-label="Buscar en la lista" className="max-w-sm" placeholder="Buscar…" value={draft} onChange={e => setDraft(e.target.value)} /><Button variant="outline">Buscar</Button></form>

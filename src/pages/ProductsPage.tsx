@@ -1,4 +1,5 @@
 import { toast } from 'sonner';
+import { EmptyState } from '@/components/shared/EmptyState';
 import { errorMessage } from '@/lib/errors';
 import { usePagedList } from '@/lib/use-paged-list';
 import { exportCsv } from '@/lib/export-csv';
@@ -53,7 +54,7 @@ export function ProductsPage() {
 
   const queryClient = useQueryClient();
 
-  const { data: products, isLoading, controls } = usePagedList<Product>('products', '/products/');
+  const { data: products, isLoading, controls, searching, clearSearch } = usePagedList<Product>('products', '/products/');
 
   const deleteMutation = useMutation({
     mutationFn: deleteProduct,
@@ -119,7 +120,7 @@ export function ProductsPage() {
             ) : products?.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={showCosts ? 5 : 4} className="text-center text-muted-foreground">
-                  No hay productos registrados todavía.
+                  <EmptyState title="Empieza tu catálogo" description="Añade tu primer producto con su precio y stock para empezar a registrar ventas." searching={searching} clearSearch={clearSearch}><Can permission="catalog.write"><Button onClick={() => { setEditingProduct(null); setDialogOpen(true); }}>Crear primer producto</Button></Can></EmptyState>
                 </TableCell>
               </TableRow>
             ) : (

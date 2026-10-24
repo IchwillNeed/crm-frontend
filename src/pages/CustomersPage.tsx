@@ -1,4 +1,5 @@
 import { toast } from 'sonner';
+import { EmptyState } from '@/components/shared/EmptyState';
 import { errorMessage } from '@/lib/errors';
 import { usePagedList } from '@/lib/use-paged-list';
 import { Can } from '@/components/shared/Can';
@@ -39,7 +40,7 @@ export function CustomersPage() {
 
   const navigate = useNavigate();
 
-  const { data: customers, isLoading, controls } = usePagedList<Customer>('customers', '/customers/');
+  const { data: customers, isLoading, controls, searching, clearSearch } = usePagedList<Customer>('customers', '/customers/');
 
   const deleteMutation = useMutation({
     mutationFn: deleteCustomer,
@@ -97,7 +98,7 @@ export function CustomersPage() {
             ) : customers?.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-center text-muted-foreground">
-                  No hay clientes registrados todavía.
+                  <EmptyState title="Aún no tienes clientes" description="Registra tu primer cliente para asociar sus compras y consultar su historial." searching={searching} clearSearch={clearSearch}><Can permission="customers.write"><Button onClick={handleCreate}>Crear primer cliente</Button></Can></EmptyState>
                 </TableCell>
               </TableRow>
             ) : (
