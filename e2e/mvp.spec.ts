@@ -60,6 +60,25 @@ async function login(page: Page, username: string) {
   await page.waitForLoadState('networkidle');
 }
 
+test('entrada principal va al login sin pasar por ventas y espera el rol al recargar', async ({ page, request }) => {
+  await page.addInitScript(() => {
+    const visited: string[] = [];
+    Object.defineProperty(window, '__visitedPaths', { value: visited });
+    const replace = history.replaceState.bind(history);
+    history.replaceState = (...args) => { replace(...args); visited.push(location.pathname); };
+  });
+  const visitedPaths = () => page.evaluate(() => (window as Window & { __visitedPaths: string[] }).__visitedPaths);
+  await page.goto('/');
+  await expect(page).toHaveURL(/\/login$/);
+  expect(await visitedPaths()).not.toContain('/sales');
+  await expect(page.getByRole('button', { name: 'Ingresar', exact: true })).toBeVisible();
+  const account = await owner(request);
+  await login(page, account.username);
+  await page.goto('/');
+  await expect(page).toHaveURL(/\/dashboard$/);
+  expect(await visitedPaths()).not.toContain('/sales');
+});
+
 test('filtros de lista combinan stock, orden y mes y se pueden restablecer', async ({ page, request }) => {
   const account = await owner(request);
   for (const [name, stock, price] of [['Café agotado', 0, 30], ['Café bajo', 2, 20], ['Café disponible', 30, 10]] as const) {

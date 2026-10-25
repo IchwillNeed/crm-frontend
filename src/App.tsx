@@ -71,7 +71,7 @@ function AppRoutes() {
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/customers/:id" element={<CustomerDetailPage />} />
       </Route>
-      <Route path="*" element={<HomeRedirect />} />
+      <Route path="*" element={<ProtectedRoute><HomeRedirect /></ProtectedRoute>} />
     </Routes>
   );
 }
