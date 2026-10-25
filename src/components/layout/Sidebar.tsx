@@ -22,8 +22,7 @@ export function Sidebar() {
   return (
     <aside className="flex w-full flex-col border-b bg-background md:h-screen md:w-64 md:shrink-0 md:border-r">
       <div className="flex h-16 items-center gap-2 border-b px-6">
-        <div className="h-6 w-6 rounded-full bg-primary" />
-        <span className="text-lg font-bold">KANTU</span>
+        <img src="/kantu-logo.svg" alt="Kantu" width="320" height="100" className="h-auto w-40 max-w-full" />
       </div>
 
       <nav className="flex flex-wrap gap-1 p-3 md:block md:flex-1 md:space-y-1">

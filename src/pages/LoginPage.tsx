@@ -37,6 +37,7 @@ export function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-muted/40">
       <Card className="w-full max-w-sm">
         <CardHeader>
+          <img src="/kantu-logo.svg" alt="Kantu" width="320" height="100" className="mx-auto mb-4 h-auto w-48 max-w-full" />
           <CardTitle className="text-2xl">Iniciar sesión</CardTitle>
           <CardDescription>Ingresa tus credenciales para acceder al sistema</CardDescription>
         </CardHeader>
