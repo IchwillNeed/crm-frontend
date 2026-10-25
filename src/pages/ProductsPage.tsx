@@ -72,7 +72,7 @@ export function ProductsPage() {
           <h1 className="text-2xl font-bold">Productos</h1>
           <p className="text-muted-foreground">Gestiona tu catálogo de productos y movimientos de inventario</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="outline"
             onClick={() => {
@@ -98,7 +98,7 @@ export function ProductsPage() {
       <div className="rounded-md border bg-background">
         <Button className="m-3" variant="outline" disabled={!products?.length} onClick={() => exportCsv("products.csv", ['ID', 'Producto', 'Precio', ...(showCosts ? ['Costo'] : []), 'Stock'], products?.map(r => [r.id, r.name, r.price, ...(showCosts ? [r.cost ?? null] : []), r.stock]) ?? [])}>Exportar página CSV</Button>
         {controls}
-        <Table>
+        <Table mobileCards>
           <TableHeader>
             <TableRow>
               <TableHead>Nombre</TableHead>
@@ -126,11 +126,11 @@ export function ProductsPage() {
             ) : (
               products?.map((product) => (
                 <TableRow key={product.id}>
-                  <TableCell className="font-medium">{product.name}</TableCell>
-                  <TableCell>{formatCurrency(product.price)}</TableCell>
-                  {showCosts && <TableCell>{formatCurrency(product.cost)}</TableCell>}
-                  <TableCell>
-                    <div className="flex items-center gap-2">
+                  <TableCell data-label="Nombre" className="font-medium">{product.name}</TableCell>
+                  <TableCell data-label="Precio">{formatCurrency(product.price)}</TableCell>
+                  {showCosts && <TableCell data-label="Costo">{formatCurrency(product.cost)}</TableCell>}
+                  <TableCell data-label="Stock">
+                    <div className="flex flex-wrap items-center gap-2">
                       <span>{product.stock}</span>
                       <span className="text-xs text-muted-foreground" title="Stock mínimo configurado">
                         (mín. {product.min_stock ?? LOW_STOCK_THRESHOLD})
@@ -140,7 +140,7 @@ export function ProductsPage() {
                       )}
                     </div>
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell data-label="Acciones" className="text-right">
                     <Button
                       aria-label="Ver Kardex"
                       variant="ghost"

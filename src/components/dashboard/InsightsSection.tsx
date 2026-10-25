@@ -5,7 +5,6 @@ import { useMutation } from '@tanstack/react-query';
 import {
   Lightbulb,
   AlertTriangle,
-  Sparkles,
   CheckCircle2,
   ArrowRight,
   PackagePlus,
@@ -92,7 +91,6 @@ export function InsightsSection({ insights, loading, filters = {} }: InsightsSec
         <CardHeader className="flex flex-wrap items-center justify-between gap-3 space-y-0 pb-3">
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2">
-              <Sparkles className="h-5 w-5 text-amber-500" />
               <CardTitle className="text-lg">Inteligencia, Sugerencias y Recomendaciones Comerciales</CardTitle>
               <Badge variant="secondary">Período: {periodLabel}</Badge>
               <Badge variant="outline">Mín. {minEvidence} ventas y clientes distintos de respaldo</Badge>

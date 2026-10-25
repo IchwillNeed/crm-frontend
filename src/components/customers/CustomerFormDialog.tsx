@@ -1,8 +1,9 @@
+import { useFormFeedback } from '@/lib/use-form-feedback';
+import { FieldError } from '@/components/shared/FieldError';
 import { useState, type FormEvent } from 'react';
 import { LoadingStatus } from '@/components/shared/LoadingState';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createCustomer, updateCustomer } from '@/api/endpoints/customers';
-import { errorMessage } from '@/lib/errors';
 import type { Customer, CustomerFormData } from '@/types/customer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,11 +42,14 @@ export function CustomerFormDialog(props: CustomerFormDialogProps) {
 function CustomerFormDialogBody({ open, onOpenChange, customer, onCreated }: CustomerFormDialogProps) {
   const [formData, setFormData] = useState<Partial<CustomerFormData>>(customer ? { first_name: customer.first_name, last_name: customer.last_name, email: customer.email ?? '', phone: customer.phone ?? '', address: customer.address ?? '', city: customer.city ?? '', notes: customer.notes ?? '', accepts_marketing: customer.accepts_marketing ?? false } : emptyForm);
   const queryClient = useQueryClient();
+  const feedback = useFormFeedback(["first_name", "last_name", "email", "phone", "city", "address", "notes"]);
   const isEditing = !!customer;
 
 
   const createMutation = useMutation({
+    meta: { inlineErrors: true },
     mutationFn: createCustomer,
+    onError: feedback.serverError,
     onSuccess: (createdCustomer) => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
       queryClient.invalidateQueries({ queryKey: ['remote-select', '/customers/'] });
@@ -55,6 +59,8 @@ function CustomerFormDialogBody({ open, onOpenChange, customer, onCreated }: Cus
   });
 
   const updateMutation = useMutation({
+    meta: { inlineErrors: true },
+    onError: feedback.serverError,
     mutationFn: (data: Partial<CustomerFormData>) => updateCustomer(customer!.id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] });
@@ -66,6 +72,7 @@ function CustomerFormDialogBody({ open, onOpenChange, customer, onCreated }: Cus
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
+    if (isSubmitting || !feedback.validate(e.currentTarget as HTMLFormElement)) return;
     if (isSubmitting) return;
     if (isEditing) {
       updateMutation.mutate(formData);
@@ -84,73 +91,80 @@ function CustomerFormDialogBody({ open, onOpenChange, customer, onCreated }: Cus
         <DialogHeader>
           <DialogTitle>{isEditing ? 'Editar cliente' : 'Nuevo cliente'}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form noValidate onSubmit={handleSubmit} onChange={event => { if (event.target instanceof HTMLElement) feedback.clear(event.target.id); }} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="first_name">Nombre</Label>
               <Input
-                id="first_name"
+                id="first_name" {...feedback.props("first_name")}
                 value={formData.first_name}
                 onChange={(e) => handleChange('first_name', e.target.value)}
                 required
               />
+              <FieldError id={feedback.errorId("first_name")} message={feedback.errors.first_name} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="last_name">Apellido</Label>
               <Input
-                id="last_name"
+                id="last_name" {...feedback.props("last_name")}
                 value={formData.last_name}
                 onChange={(e) => handleChange('last_name', e.target.value)}
                 required
               />
+              <FieldError id={feedback.errorId("last_name")} message={feedback.errors.last_name} />
             </div>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
-              id="email"
+              id="email" {...feedback.props("email")}
               type="email"
               value={formData.email ?? ''}
               onChange={(e) => handleChange('email', e.target.value)}
             />
+              <FieldError id={feedback.errorId("email")} message={feedback.errors.email} />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="phone">Teléfono</Label>
               <Input
-                id="phone"
+                id="phone" {...feedback.props("phone")}
                 value={formData.phone ?? ''}
                 onChange={(e) => handleChange('phone', e.target.value)}
               />
+              <FieldError id={feedback.errorId("phone")} message={feedback.errors.phone} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="city">Ciudad</Label>
               <Input
-                id="city"
+                id="city" {...feedback.props("city")}
                 value={formData.city ?? ''}
                 onChange={(e) => handleChange('city', e.target.value)}
               />
+              <FieldError id={feedback.errorId("city")} message={feedback.errors.city} />
             </div>
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="address">Dirección</Label>
             <Input
-              id="address"
+              id="address" {...feedback.props("address")}
               value={formData.address ?? ''}
               onChange={(e) => handleChange('address', e.target.value)}
             />
+              <FieldError id={feedback.errorId("address")} message={feedback.errors.address} />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="notes">Notas</Label>
             <Textarea
-              id="notes"
+              id="notes" {...feedback.props("notes")}
               value={formData.notes ?? ''}
               onChange={(e) => handleChange('notes', e.target.value)}
             />
+              <FieldError id={feedback.errorId("notes")} message={feedback.errors.notes} />
           </div>
 
           <label className="flex items-center gap-2 text-sm">
@@ -168,6 +182,7 @@ function CustomerFormDialogBody({ open, onOpenChange, customer, onCreated }: Cus
             Activa esta casilla solo tras obtener autorización. Registra fecha, medio y referencia del respaldo en Notas. La casilla no demuestra cómo se obtuvo.
           </p>
 
+          <FieldError id={feedback.errorId("form")} message={feedback.summary} />
           <DialogFooter>
             <Button type="button" variant="outline" disabled={isSubmitting} onClick={() => onOpenChange(false)}>
               Cancelar
@@ -176,11 +191,6 @@ function CustomerFormDialogBody({ open, onOpenChange, customer, onCreated }: Cus
               {isSubmitting ? <LoadingStatus label="Guardando…" slowMessage={false} /> : 'Guardar'}
             </Button>
           </DialogFooter>
-          {(createMutation.isError || updateMutation.isError) && (
-            <p role="alert" className="text-sm text-destructive">
-              {errorMessage(createMutation.error ?? updateMutation.error)}
-            </p>
-          )}
         </form>
       </DialogContent>
     </Dialog>

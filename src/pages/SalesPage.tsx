@@ -33,7 +33,7 @@ export function SalesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Ventas</h1>
           <p className="text-muted-foreground">Historial de ventas registradas</p>
@@ -47,7 +47,7 @@ export function SalesPage() {
       <div className="rounded-md border bg-background">
         <Button className="m-3" variant="outline" disabled={!sales?.length} onClick={() => exportCsv("sales.csv", ['ID', 'Fecha', 'Total', 'Estado'], sales?.map(r => [r.id, r.sale_date, r.total, r.status]) ?? [])}>Exportar página CSV</Button>
         {controls}
-        <Table>
+        <Table mobileCards>
           <TableHeader>
             <TableRow>
               <TableHead>Fecha</TableHead>
@@ -73,15 +73,15 @@ export function SalesPage() {
             ) : (
               sales?.map((sale) => (
                 <TableRow key={sale.id}>
-                  <TableCell>{formatDate(sale.sale_date)}</TableCell>
-                  <TableCell>{customerName(sale.customer)}</TableCell>
-                  <TableCell className="font-medium">{formatCurrency(sale.total)}</TableCell>
-                  <TableCell>
+                  <TableCell data-label="Fecha">{formatDate(sale.sale_date)}</TableCell>
+                  <TableCell data-label="Cliente">{customerName(sale.customer)}</TableCell>
+                  <TableCell data-label="Total" className="font-medium">{formatCurrency(sale.total)}</TableCell>
+                  <TableCell data-label="Estado">
                     <Badge variant={sale.status === 'Completed' ? 'default' : 'destructive'}>
                       {sale.status === 'Completed' ? 'Completada' : 'Cancelada'}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell data-label="Acciones" className="text-right">
                       <Button aria-label="Ver detalle" variant="ghost" size="icon" onClick={() => navigate(`/sales/${sale.id}`)}>
                         <Eye className="h-4 w-4" />
                       </Button>

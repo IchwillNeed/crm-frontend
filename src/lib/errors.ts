@@ -24,6 +24,16 @@ function validationMessages(value: unknown, depth = 0): string[] {
   return [];
 }
 
+export function fieldErrorMessages(error: unknown, fields: readonly string[]): Record<string, string> {
+  if (!axios.isAxiosError(error) || ![400, 422].includes(error.response?.status ?? 0)) return {};
+  const data = error.response?.data;
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return {};
+  return Object.fromEntries(fields.flatMap(field => {
+    const message = validationMessages(data[field]).slice(0, 2).join(' ');
+    return message ? [[field, message]] : [];
+  }));
+}
+
 export function errorMessage(error: unknown): string {
   if (!axios.isAxiosError(error)) return fallback;
   if (!error.response) {

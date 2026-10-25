@@ -63,7 +63,7 @@ export function CustomersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Clientes</h1>
           <p className="text-muted-foreground">Gestiona los clientes de tu negocio</p>
@@ -76,7 +76,7 @@ export function CustomersPage() {
 
       <div className="rounded-md border bg-background">
         {controls}
-        <Table>
+        <Table mobileCards>
           <TableHeader>
             <TableRow>
               <TableHead>Nombre</TableHead>
@@ -104,13 +104,13 @@ export function CustomersPage() {
             ) : (
               customers?.map((customer) => (
                 <TableRow key={customer.id}>
-                  <TableCell className="font-medium">
+                  <TableCell data-label="Nombre" className="font-medium">
                     {customer.first_name} {customer.last_name}
                   </TableCell>
-                  <TableCell>{customer.email || '—'}</TableCell>
-                  <TableCell>{customer.phone || '—'}</TableCell>
-                  <TableCell>{customer.city || '—'}</TableCell>
-                  <TableCell className="text-right">
+                  <TableCell data-label="Email">{customer.email || '—'}</TableCell>
+                  <TableCell data-label="Teléfono">{customer.phone || '—'}</TableCell>
+                  <TableCell data-label="Ciudad">{customer.city || '—'}</TableCell>
+                  <TableCell data-label="Acciones" className="text-right">
                     <Button aria-label="Ver detalle" variant="ghost" size="icon" onClick={() => navigate(`/customers/${customer.id}`)}>
                       <Eye className="h-4 w-4" />
                     </Button>

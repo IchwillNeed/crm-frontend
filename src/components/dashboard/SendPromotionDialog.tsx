@@ -1,4 +1,5 @@
 import { CampaignImageInput } from './CampaignImageInput';
+import { CampaignRecipients } from './CampaignRecipients';
 import { useState, type FormEvent } from 'react';
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import {
@@ -57,6 +58,7 @@ function PromotionForm({
   const [executionResult, setExecutionResult] = useState<CampaignExecutionResult | null>(null);
 
   const previewQuery = useQuery({
+    meta: { inlineErrors: true },
     queryKey: ['campaign-preview', productAId, productBId, filters, subject, message, selectedIds, imageData, imageName],
     queryFn: () =>
       previewRecommendationCampaign(
@@ -72,6 +74,7 @@ function PromotionForm({
   });
 
   const sendMutation = useMutation({
+    meta: { inlineErrors: true },
     mutationFn: () => {
       if (!productAId || !productBId) {
         throw new Error('Selecciona el par de productos para la campaña.');
@@ -108,6 +111,7 @@ function PromotionForm({
   });
 
   const retryMutation = useMutation({
+    meta: { inlineErrors: true },
     mutationFn: () => {
       if (!executionResult?.campaign_id) {
         throw new Error('No hay campaña registrada para reintentar.');
@@ -166,14 +170,21 @@ function PromotionForm({
       )}
 
       {previewQuery.isError && (
-        <p role="alert" className="rounded-md border border-red-200 bg-red-50 p-3 text-xs text-red-800">
-          {errorMessage(previewQuery.error)}
-        </p>
+        <div className="space-y-2 rounded-md border border-red-200 bg-red-50 p-3 text-xs text-red-800">
+          <p role="alert">{errorMessage(previewQuery.error)}</p>
+          <Button type="button" variant="outline" disabled={previewQuery.isFetching || sendMutation.isPending || Boolean(executionResult)}
+            onClick={() => {
+              setConfirmation(null);
+              setError('');
+              if (selectedIds?.length === 0) void previewQuery.refetch();
+              else setSelectedIds([]);
+            }}>Recargar destinatarios sin selección</Button>
+        </div>
       )}
 
       <Button type="button" variant="outline"
         disabled={previewQuery.isFetching || previewQuery.isError || previewQuery.isPlaceholderData || sendMutation.isPending || Boolean(executionResult)}
-        onClick={() => { setConfirmation(null); if (selectedIds !== undefined) setSelectedIds(undefined); else void previewQuery.refetch(); }}>
+        onClick={() => { setConfirmation(null); setError(''); void previewQuery.refetch(); }}>
         Actualizar vista previa
       </Button>
 
@@ -214,7 +225,7 @@ function PromotionForm({
             {' '}{preview.cooldown_excluded_count} destinatario(s) excluido(s) por contacto reciente o envío en curso.</p>
           <p className="font-semibold">Seleccionados para enviar: {preview.selected_count}</p>
           <div className="space-y-1.5 border-t pt-2">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="font-semibold text-foreground">
                 Destinatarios elegibles ({preview.recipient_count}):
               </span>
@@ -233,28 +244,9 @@ function PromotionForm({
                   'No hay destinatarios elegibles para esta regla en el período seleccionado.'}
               </p>
             ) : (
-              <ul
-                data-testid="campaign-recipient-list"
-                className="max-h-32 space-y-1 overflow-y-auto rounded border bg-background p-2"
-              >
-                {preview.recipients.map((r) => (
-                  <li key={r.customer_id} className="flex items-center justify-between text-xs">
-                    <label className="flex items-center gap-2">
-                      <input type="checkbox" aria-label={`Enviar a ${r.name}`}
-                        checked={(selectedIds ?? preview.selected_customer_ids).includes(r.customer_id)}
-                        disabled={previewQuery.isFetching || previewQuery.isError || sendMutation.isPending || Boolean(executionResult)}
-                        onChange={e => {
-                          setConfirmation(null);
-                          setSelectedIds(e.target.checked
-                            ? [...preview.selected_customer_ids, r.customer_id]
-                            : preview.selected_customer_ids.filter(id => id !== r.customer_id));
-                        }} />
-                      <span className="font-medium">{r.name}</span>
-                    </label>
-                    <span className="text-muted-foreground">{r.email}</span>
-                  </li>
-                ))}
-              </ul>
+              <CampaignRecipients recipients={preview.recipients} selectedIds={selectedIds ?? preview.selected_customer_ids}
+                disabled={previewQuery.isFetching || previewQuery.isError || previewQuery.isPlaceholderData || sendMutation.isPending || Boolean(executionResult)}
+                onChange={ids => { setConfirmation(null); setSelectedIds(ids); }} />
             )}
           </div>
         </div>
@@ -311,10 +303,10 @@ function PromotionForm({
           className="space-y-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-amber-950"
         >
           <p className="font-semibold">{executionResult.detail}</p>
-          <ul className="space-y-1">
+          <ul className="max-h-64 space-y-1 overflow-y-auto">
             {executionResult.recipient_statuses.map((st) => (
-              <li key={st.id} className="flex items-center justify-between gap-2">
-                <span>
+              <li key={st.id} className="flex flex-wrap items-center justify-between gap-2">
+                <span className="min-w-0 break-all">
                   {st.name} ({st.email})
                 </span>
                 <Badge variant={st.status === 'sent' ? 'default' : 'destructive'}>

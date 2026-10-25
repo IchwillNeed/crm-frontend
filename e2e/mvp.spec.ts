@@ -60,6 +60,88 @@ async function login(page: Page, username: string) {
   await page.waitForLoadState('networkidle');
 }
 
+test('filtros de lista combinan stock, orden y mes y se pueden restablecer', async ({ page, request }) => {
+  const account = await owner(request);
+  for (const [name, stock, price] of [['Café agotado', 0, 30], ['Café bajo', 2, 20], ['Café disponible', 30, 10]] as const) {
+    const result = await request.post(`${api}/products/`, { headers: account.headers, data: { name, stock, price, min_stock: 5 } });
+    expect(result.status()).toBe(201);
+  }
+  await login(page, account.username);
+  await page.getByRole('link', { name: 'Productos', exact: true }).click();
+  await page.getByRole('button', { name: 'Filtros', exact: true }).click();
+  await page.getByLabel('Inventario', { exact: true }).selectOption('low');
+  await page.getByLabel('Ordenar por', { exact: true }).selectOption('price_desc');
+  await page.getByRole('button', { name: 'Aplicar filtros', exact: true }).click();
+  const rows = page.locator('table tbody tr');
+  await expect(rows).toHaveCount(2);
+  await expect(rows.first()).toContainText('Café agotado');
+  await expect(rows.last()).toContainText('Café bajo');
+  await page.getByLabel('Mes de registro', { exact: true }).fill('2020-01');
+  await page.getByRole('button', { name: 'Aplicar filtros', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'No encontramos coincidencias' })).toBeVisible();
+  await page.getByRole('button', { name: 'Restablecer', exact: true }).click();
+  await expect(rows).toHaveCount(3);
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.locator('main').evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+  await page.screenshot({ path: 'test-results/list-filters-mobile.png' });
+});
+
+test('listas móviles muestran fichas completas y las validaciones acompañan al campo', async ({ page, request }) => {
+  const account = await owner(request);
+  const created = await request.post(`${api}/products/`, { headers: account.headers, data: { name: 'Producto con un nombre largo para comprobar la lectura en móvil', price: '25', stock: 10, cost: '10' } });
+  expect(created.status()).toBe(201);
+  const product = await created.json();
+  const customer = await request.post(`${api}/customers/`, { headers: account.headers, data: { first_name: 'Cliente de prueba', last_name: 'Apellido largo', email: 'correo.largo.para.pruebas.de.visualizacion@example.test' } });
+  expect(customer.status()).toBe(201);
+  const sale = await request.post(`${api}/sales/`, { headers: { ...account.headers, 'Idempotency-Key': randomUUID() }, data: { items: [{ product: product.id, quantity: 1, unit_price: '25' }] } });
+  expect(sale.status()).toBe(201);
+  await login(page, account.username);
+  await page.setViewportSize({ width: 390, height: 844 });
+  for (const section of ['Clientes', 'Productos', 'Ventas']) {
+    await page.getByRole('link', { name: section, exact: true }).click();
+    const table = page.locator('table[data-mobile-cards]');
+    await expect(table.locator('tbody tr')).toHaveCount(1);
+    await expect(table).toHaveCSS('display', 'block');
+    await expect(table.locator('td[data-label="Acciones"] button').first()).toBeVisible();
+    expect(await table.locator('tbody tr').evaluate(element => element.getBoundingClientRect().right <= window.innerWidth)).toBe(true);
+  }
+  await page.getByRole('link', { name: 'Productos', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Productos', exact: true })).toBeVisible();
+  await page.screenshot({ path: 'test-results/products-mobile.png', fullPage: true });
+  await page.getByRole('button', { name: 'Nuevo producto', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('button', { name: 'Guardar', exact: true }).click();
+  await expect(dialog.getByLabel('Nombre', { exact: true })).toHaveAttribute('aria-invalid', 'true');
+  await expect(dialog.getByLabel('Nombre', { exact: true })).toBeFocused();
+  await dialog.getByLabel('Nombre', { exact: true }).fill('Producto válido');
+  await dialog.getByLabel('Precio', { exact: true }).fill('12');
+  await page.route('**/api/products/', route => route.fulfill({ status: 400, json: { price: ['Revisa el precio del producto.'] } }));
+  await dialog.getByRole('button', { name: 'Guardar', exact: true }).click();
+  await expect(dialog.getByLabel('Precio', { exact: true })).toHaveAttribute('aria-invalid', 'true');
+  await expect(dialog.getByLabel('Precio', { exact: true })).toHaveAccessibleDescription('Revisa el precio del producto.');
+  await expect(page.getByText('Revisa el precio del producto.', { exact: true })).toHaveCount(1);
+  await expect(dialog.getByLabel('Nombre', { exact: true })).toHaveValue('Producto válido');
+  await page.unroute('**/api/products/');
+  await dialog.getByLabel('Precio', { exact: true }).fill('15');
+  await expect(dialog.getByLabel('Precio', { exact: true })).toHaveAttribute('aria-invalid', 'false');
+  await dialog.getByRole('button', { name: 'Guardar', exact: true }).click();
+  await expect(dialog).not.toBeVisible();
+  await page.getByRole('link', { name: 'Clientes', exact: true }).click();
+  await page.getByRole('button', { name: 'Nuevo cliente', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Guardar', exact: true }).click();
+  await expect(dialog.getByLabel('Nombre', { exact: true })).toHaveAttribute('aria-invalid', 'true');
+  await dialog.getByLabel('Nombre', { exact: true }).fill('Ana');
+  await dialog.getByLabel('Apellido', { exact: true }).fill('Prueba');
+  await dialog.getByLabel('Email', { exact: true }).fill('ana@example.test');
+  await page.route('**/api/customers/', route => route.fulfill({ status: 400, json: { email: ['Revisa este correo.'] } }));
+  await dialog.getByRole('button', { name: 'Guardar', exact: true }).click();
+  await expect(dialog.getByLabel('Email', { exact: true })).toHaveAccessibleDescription('Revisa este correo.');
+  await page.screenshot({ path: 'test-results/customer-validation-mobile.png', fullPage: true });
+  await dialog.getByRole('button', { name: 'Cancelar', exact: true }).click();
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await expect(page.locator('table[data-mobile-cards]')).toHaveCSS('display', 'table');
+});
+
 test('borrador de venta permite cancelar la salida, volver atrás y descartar', async ({ page, request }) => {
   const account = await owner(request);
   await login(page, account.username);

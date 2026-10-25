@@ -238,8 +238,8 @@ test('revisión de evidencia, audiencia compró A no B, selección manual, frecu
   await dialog.getByRole('button', { name: 'Actualizar vista previa' }).click();
   await expect(recipientList).toContainText('lucia.actualizada@example.test');
 
-  // Volver a desmarcar a Carlos Ruiz para enviar únicamente a Lucía Gómez
-  await dialog.getByLabel('Enviar a Carlos Ruiz').uncheck();
+  // Actualizar la vista previa conserva la exclusión de Carlos.
+  await expect(dialog.getByLabel('Enviar a Carlos Ruiz')).not.toBeChecked();
   await expect(previewSummary).toContainText('Seleccionados para enviar: 1');
   await expect(dialog.locator('#confirm_campaign_send')).not.toBeChecked();
   await expect(sendBtn).toBeDisabled();
@@ -266,4 +266,68 @@ test('revisión de evidencia, audiencia compró A no B, selección manual, frecu
   await expect(history).toContainText('lucia.actualizada@example.test');
   await expect(history).toContainText('Remitente confirmado:');
   await expect(history.getByRole('button', {name: 'Continuar pendientes y reintentar rechazados'})).toHaveCount(0);
+});
+
+test('audiencia grande permite buscar y seleccionar coincidencias entre páginas', async ({ page, request }) => {
+  const admin = await createOwner(request);
+  const recipients = Array.from({ length: 53 }, (_, i) => ({ customer_id: i + 1, name: `Cliente ${i + 1}`, email: `cliente${i + 1}@example.test` }));
+  const period = { start: '2026-10-01', end: '2026-10-31' };
+  await page.route('**/api/dashboard/insights/?*', route => route.fulfill({ json: {
+    enabled: true, period, insights: [], frequent_pairs: [], restock_suggestions: [],
+    recommendations: [{ product_a_id: 1, product_a_name: 'Café demo', product_b_id: 2, product_b_name: 'Filtros demo',
+      product_b_stock: 100, supporting_sales_count: 10, supporting_customers_count: 10, eligible_recipients_count: 53,
+      period, suggested_subject: 'Oferta demo', suggested_message: 'Mensaje demo' }],
+  } }));
+  let previews = 0;
+  let audienceChanged = false;
+  await page.route('**/api/dashboard/insights/campaign-preview/**', route => {
+    previews++;
+    const payload = route.request().postDataJSON();
+    const ids = payload.selected_customer_ids ?? recipients.map(r => r.customer_id);
+    if (audienceChanged && ids.length > 0) return route.fulfill({ status: 400, json: { detail: 'La audiencia cambió. Actualiza la vista previa.' } });
+    return route.fulfill({ json: { recipients, recipient_count: 53, selected_customer_ids: ids, selected_count: ids.length,
+      preview_token: `preview-${previews}`, rule_label: 'Compró café, no filtros', period,
+      product_a: { id: 1, name: 'Café demo' }, product_b: { id: 2, name: 'Filtros demo', stock: 100 },
+      supporting_sales_count: 10, supporting_customers_count: 10, cooldown_days: 7, cooldown_excluded_count: 0,
+      sender: { from_email: 'demo@example.test' } } });
+  });
+  await login(page, admin.username);
+  await page.getByRole('button', { name: 'Revisar y enviar', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  const list = dialog.getByTestId('campaign-recipient-list');
+  await expect(list.locator('li')).toHaveCount(10);
+  await dialog.getByRole('button', { name: 'Quitar todos', exact: true }).click();
+  await expect(dialog.getByText('Seleccionados para enviar: 0', { exact: true })).toBeVisible();
+  const countBeforeSearch = previews;
+  await dialog.getByLabel('Buscar destinatarios').fill('cliente 1');
+  await expect(dialog.getByText('11 coincidencias · 0 seleccionados en total', { exact: true })).toBeVisible();
+  expect(previews).toBe(countBeforeSearch);
+  await dialog.getByRole('button', { name: 'Seleccionar coincidencias' }).click();
+  await expect(dialog.getByText('Seleccionados para enviar: 11', { exact: true })).toBeVisible();
+  await dialog.getByRole('button', { name: 'Destinatarios siguientes' }).click();
+  await expect(dialog.getByLabel('Enviar a Cliente 19', { exact: true })).toBeChecked();
+  await dialog.getByLabel('Buscar destinatarios').fill('cliente52@example.test');
+  await dialog.getByRole('button', { name: 'Seleccionar coincidencias' }).click();
+  await expect(dialog.getByText('Seleccionados para enviar: 12', { exact: true })).toBeVisible();
+  await dialog.locator('#confirm_campaign_send').check();
+  await dialog.getByRole('button', { name: 'Quitar coincidencias' }).click();
+  await expect(dialog.getByText('Seleccionados para enviar: 11', { exact: true })).toBeVisible();
+  await expect(dialog.locator('#confirm_campaign_send')).not.toBeChecked();
+  await dialog.getByRole('button', { name: 'Actualizar vista previa' }).click();
+  await expect(dialog.getByText('Seleccionados para enviar: 11', { exact: true })).toBeVisible();
+  await dialog.getByLabel('Buscar destinatarios').fill('no-existe');
+  await expect(dialog.getByText('No hay destinatarios que coincidan con la búsqueda.')).toBeVisible();
+  await dialog.getByLabel('Buscar destinatarios').fill('');
+  audienceChanged = true;
+  await dialog.getByRole('button', { name: 'Actualizar vista previa' }).click();
+  await expect(dialog.getByRole('alert')).toContainText('La audiencia cambió');
+  await expect(page.getByText('La audiencia cambió. Actualiza la vista previa.', { exact: true })).toHaveCount(1);
+  await dialog.getByRole('button', { name: 'Recargar destinatarios sin selección' }).click();
+  await expect(dialog.getByText('Seleccionados para enviar: 0', { exact: true })).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Confirmar y enviar campaña' })).toBeDisabled();
+  await expect(page.getByText('La audiencia cambió. Actualiza la vista previa.', { exact: true })).toHaveCount(0);
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await list.evaluate(el => el.scrollHeight > el.clientHeight)).toBe(true);
+  expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+  await page.screenshot({ path: 'test-results/campaign-recipients-mobile.png' });
 });

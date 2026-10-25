@@ -1,0 +1,40 @@
+/* Keep one set of rows/actions for both layouts; print keeps the table layout. */
+@media screen and (max-width: 639px) {
+  [data-mobile-cards] { display: block; }
+  [data-mobile-cards] thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  [data-mobile-cards] tbody { display: block; padding: 0.75rem; }
+  [data-mobile-cards] tbody tr {
+    display: block;
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    padding: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+  [data-mobile-cards] tbody tr:last-child { border-bottom: 1px solid var(--border); margin-bottom: 0; }
+  [data-mobile-cards] td {
+    display: block;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: left;
+    min-width: 0;
+  }
+  [data-mobile-cards] td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--muted-foreground);
+    margin-bottom: 0.25rem;
+  }
+  [data-mobile-cards] td[data-label="Acciones"] { display: flex; flex-wrap: wrap; gap: 0.25rem; }
+  [data-mobile-cards] td[data-label="Acciones"]::before { flex-basis: 100%; }
+  [data-mobile-cards] td[data-label="Acciones"] button { min-width: 2.75rem; min-height: 2.75rem; }
+}
